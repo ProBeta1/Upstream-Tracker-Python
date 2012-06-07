@@ -50,6 +50,9 @@ import threading
 
 import xml.dom.minidom as minidom
 
+import pycurl
+import cStringIO
+
 try:
     from lxml import etree as ET
 except ImportError:
@@ -1155,7 +1158,7 @@ def main(args):
 #        task.put((modulename, method, additional_info))
 
     #For local testing. Change URL accordingly for production.
-    file = urllib2.urlopen('http://localhost:3000/records.xml')
+    file = urllib2.urlopen('http://localhost:3001/records.xml')
     data=file.read()
     file.close()
     
@@ -1195,13 +1198,73 @@ def main(args):
         (cat, modulename, version, location) = result.get()
 
         if version and location:
-            out.write('%s:%s:%s:%s\n' % (cat, modulename, version, location))
+	    for record in records:
+		if modulename == record.getElementsByTagName('pkgName')[0].toxml().replace('<pkgName>','').replace('</pkgName>',''):
+		  pkgid=record.getElementsByTagName('id')[0].toxml().split('>')[1].split('<')[0]
+		  data = {'record[pkgName]':modulename,'record[latest_ver]':version, 'record[processed]':'true', 'record[error]':'false', 'record[errorMessage]':''}
+		  post = urllib.urlencode(data)
+		  buf = cStringIO.StringIO()
+		  c = pycurl.Curl()
+		  c.setopt(c.CUSTOMREQUEST, "PUT")
+		  pkgurl='http://localhost:3001/records/'+pkgid+'.xml'
+		  c.setopt(c.URL, str(pkgurl))
+		  c.setopt(c.POSTFIELDS, post)
+		  c.setopt(c.WRITEFUNCTION, buf.write)
+		  c.perform()
+		  print buf.getvalue()
+		  buf.close()
+            #out.write('%s:%s:%s:%s\n' % (cat, modulename, version, location))
         elif version:
-            out.write('%s:%s:%s:\n' % (cat, modulename, version))
+	  for record in records:
+		if modulename == record.getElementsByTagName('pkgName')[0].toxml().replace('<pkgName>','').replace('</pkgName>',''):
+		  pkgid=record.getElementsByTagName('id')[0].toxml().split('>')[1].split('<')[0]
+		  data = {'record[pkgName]':modulename,'record[latest_ver]':version, 'record[processed]':'true', 'record[error]':'false', 'record[errorMessage]':''}
+		  post = urllib.urlencode(data)
+		  buf = cStringIO.StringIO()
+		  c = pycurl.Curl()
+		  c.setopt(c.CUSTOMREQUEST, "PUT")
+		  pkgurl='http://localhost:3001/records/'+pkgid+'.xml'
+		  c.setopt(c.URL, str(pkgurl))
+		  c.setopt(c.POSTFIELDS, post)
+		  c.setopt(c.WRITEFUNCTION, buf.write)
+		  c.perform()
+		  print buf.getvalue()
+		  buf.close()
+            #out.write('%s:%s:%s:\n' % (cat, modulename, version))
         elif location:
-            out.write('%s:%s::%s\n' % (cat, modulename, location))
+	  for record in records:
+		if modulename == record.getElementsByTagName('pkgName')[0].toxml().replace('<pkgName>','').replace('</pkgName>',''):
+		  pkgid=record.getElementsByTagName('id')[0].toxml().split('>')[1].split('<')[0]
+		  data = {'record[pkgName]':modulename,'record[processed]':'true', 'record[error]':'true', 'record[errorMessage]':'Unable to find version' }
+		  post = urllib.urlencode(data)
+		  buf = cStringIO.StringIO()
+		  c = pycurl.Curl()
+		  c.setopt(c.CUSTOMREQUEST, "PUT")
+		  pkgurl='http://localhost:3001/records/'+pkgid+'.xml'
+		  c.setopt(c.URL, str(pkgurl))
+		  c.setopt(c.POSTFIELDS, post)
+		  c.setopt(c.WRITEFUNCTION, buf.write)
+		  c.perform()
+		  print buf.getvalue()
+		  buf.close()
+            #out.write('%s:%s::%s\n' % (cat, modulename, location))
         else:
-            out.write('%s:%s::\n' % (cat, modulename))
+	  for record in records:
+		if modulename == record.getElementsByTagName('pkgName')[0].toxml().replace('<pkgName>','').replace('</pkgName>',''):
+		  pkgid=record.getElementsByTagName('id')[0].toxml().split('>')[1].split('<')[0]
+		  data = {'record[pkgName]':modulename,'record[processed]':'true', 'record[error]':'true', 'record[errorMessage]':'Unable to find version & location' }
+		  post = urllib.urlencode(data)
+		  buf = cStringIO.StringIO()
+		  c = pycurl.Curl()
+		  c.setopt(c.CUSTOMREQUEST, "PUT")
+		  pkgurl='http://localhost:3001/records/'+pkgid+'.xml'
+		  c.setopt(c.URL, str(pkgurl))
+		  c.setopt(c.POSTFIELDS, post)
+		  c.setopt(c.WRITEFUNCTION, buf.write)
+		  c.perform()
+		  print buf.getvalue()
+		  buf.close()
+            #out.write('%s:%s::\n' % (cat, modulename))
 
         result.task_done()
 
