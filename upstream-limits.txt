@@ -1,0 +1,61 @@
+# This file is used to express limits we want to have on new upstream tarballs.
+#
+# It's possible to decide to:
+#
+#  + not have unstable versions (for modules following the x.y.z release
+#    scheme, where it's unstable when y is odd)
+#    Use the no-odd-unstable instruction for this behavior.
+#
+#  + not have a version greater or equal than a specified version.
+#    Use the "max|x.y" instruction for this behavior.
+#
+#  + not have specific versions.
+#    Use the "skip|x.y;a.b;..." instruction for this behavior
+#
+
+# LaTeXPlugin has some tarballs with a date instead of version
+LaTeXPlugin:max|2000
+# bash-completion has some tarballs with a date instead of version
+bash-completion:max|2008
+# ht has some tarballs with a date instead of version
+ht:max|2000
+# libflashsupport has some tarballs with a date instead of version
+libflashsupport:max|2000
+# libofx used 0.11 as 0.1.1...
+libofx:max|0.10
+xf86-video-mga:skip|1.9.99;1.9.100
+
+# we don't want unstable versions of the following modules
+gq:no-odd-unstable
+swfdec:no-odd-unstable
+swfdec-mozilla:no-odd-unstable
+
+# branches
+gobby|0.4:max|0.4.90
+gst-plugins-bad|0.10:max|0.11.0
+gst-plugins-base|0.10:max|0.11.0
+gst-plugins-good|0.10:max|0.11.0
+gst-plugins-ugly|0.10:max|0.11.0
+gstreamer|0.10:max|0.11.0
+udisks|1.90:max|1.90
+
+## At least for next release
+#PackageKit:no-odd-unstable
+#dbus:no-odd-unstable
+#libdmapsharing:no-odd-unstable
+#liferea:no-odd-unstable
+## Modules that follow a six-months cycle, and will be released too late for
+## next release
+clutter:no-odd-unstable
+#folks:no-odd-unstable
+#gssdp:no-odd-unstable
+#gupnp:no-odd-unstable
+#gupnp-av:no-odd-unstable
+gwibber:no-odd-unstable
+#libgdata:no-odd-unstable
+#pixman:no-odd-unstable
+#telepathy-gabble:no-odd-unstable
+telepathy-glib:no-odd-unstable
+#telepathy-mission-control:no-odd-unstable
+#telepathy-sofiasip:no-odd-unstable
+webkit:no-odd-unstable
