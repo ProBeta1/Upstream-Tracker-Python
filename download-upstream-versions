@@ -1196,6 +1196,8 @@ def main(args):
 
     while not result.empty():
         (cat, modulename, version, location) = result.get()
+        if version=='--':
+	  version=None
 
         if version and location:
 	    for record in records:
@@ -1213,7 +1215,7 @@ def main(args):
 		  c.perform()
 		  print buf.getvalue()
 		  buf.close()
-            #out.write('%s:%s:%s:%s\n' % (cat, modulename, version, location))
+            out.write('%s:%s:%s:%s\n' % (cat, modulename, version, location))
         elif version:
 	  for record in records:
 		if modulename == record.getElementsByTagName('pkgName')[0].toxml().replace('<pkgName>','').replace('</pkgName>',''):
@@ -1230,7 +1232,7 @@ def main(args):
 		  c.perform()
 		  print buf.getvalue()
 		  buf.close()
-            #out.write('%s:%s:%s:\n' % (cat, modulename, version))
+          out.write('%s:%s:%s:\n' % (cat, modulename, version))
         elif location:
 	  for record in records:
 		if modulename == record.getElementsByTagName('pkgName')[0].toxml().replace('<pkgName>','').replace('</pkgName>',''):
@@ -1247,7 +1249,7 @@ def main(args):
 		  c.perform()
 		  print buf.getvalue()
 		  buf.close()
-            #out.write('%s:%s::%s\n' % (cat, modulename, location))
+          out.write('%s:%s::%s\n' % (cat, modulename, location))
         else:
 	  for record in records:
 		if modulename == record.getElementsByTagName('pkgName')[0].toxml().replace('<pkgName>','').replace('</pkgName>',''):
@@ -1264,7 +1266,7 @@ def main(args):
 		  c.perform()
 		  print buf.getvalue()
 		  buf.close()
-            #out.write('%s:%s::\n' % (cat, modulename))
+          out.write('%s:%s::\n' % (cat, modulename))
 
         result.task_done()
 
