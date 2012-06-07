@@ -48,6 +48,8 @@ import urlparse
 import Queue
 import threading
 
+import xml.dom.minidom as minidom
+
 try:
     from lxml import etree as ET
 except ImportError:
@@ -1134,23 +1136,49 @@ def main(args):
     task = Queue.Queue()
     result = Queue.Queue()
 
-    for line in lines:
-        if _line_is_comment(line):
-            continue
+#    for line in lines:
+#        if _line_is_comment(line):
+#            continue
 
-        (modulename, method, additional_info) = line[:-1].split(':', 2)
+#        (modulename, method, additional_info) = line[:-1].split(':', 2)
 
         # We will do a cache prefetch of all http url, so that we don't have to
         # open the same url several times
-        if method in [ 'httpls', 'dualhttpls' ]:
-            if method == 'httpls':
-                to_cache.add(additional_info)
-            elif method == 'dualhttpls':
-                (url1, url2) = additional_info.split('|')
-                to_cache.add(url1)
-                to_cache.add(url2)
+#        if method in [ 'httpls', 'dualhttpls' ]:
+#            if method == 'httpls':
+#                to_cache.add(additional_info)
+#            elif method == 'dualhttpls':
+#                (url1, url2) = additional_info.split('|')
+#                to_cache.add(url1)
+#                to_cache.add(url2)
+#
+#        task.put((modulename, method, additional_info))
 
-        task.put((modulename, method, additional_info))
+    #For local testing. Change URL accordingly for production.
+    file = urllib2.urlopen('http://localhost:3000/records.xml')
+    data=file.read()
+    file.close()
+    
+    doc = minidom.parseString(data)
+    records=doc.getElementsByTagName("record")
+    
+    for record in records:
+      modulename = record.getElementsByTagName('pkgName')[0].toxml().replace('<pkgName>','').replace('</pkgName>','')
+#     branch = record.getElementsByTagName('branch')[0].toxml().replace('<branch>','').replace('</branch>','')
+      method = record.getElementsByTagName('method')[0].toxml().replace('<method>','').replace('</method>','')
+      additional_info = record.getElementsByTagName('info')[0].toxml().replace('<info>','').replace('</info>','')
+      
+      if method in [ 'httpls', 'dualhttpls' ]:
+        if method == 'httpls':
+          to_cache.add(additional_info)
+        elif method == 'dualhttpls':
+          (url1, url2) = additional_info.split('|')
+          to_cache.add(url1)
+          to_cache.add(url2)
+
+      task.put((modulename, method, additional_info))
+      
+      
 
     # We'll have to remove this temporary cache
     if not options.debug:
