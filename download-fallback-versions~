@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 # vim: set ts=4 sw=4 et: coding=UTF-8
 
 #
@@ -30,78 +30,51 @@ import socket
 import sys
 import time
 
-import StringIO
-import gzip
 import optparse
 import urllib2
 
 from util import *
 
 
-PACKAGE_DETAILS = 'http://www.cpan.org/modules/02packages.details.txt.gz'
+FALLBACK_URL = 'http://www.suse.de/~meissner/factory.upstream.lst'
 
 
 #######################################################################
 
 
-def parse_cpan_details():
-    tarballs = {}
-    last_updated = ''
+def parse_fallback_data():
+    metadatas = []
 
-    fd = urllib2.urlopen(PACKAGE_DETAILS)
-    stream = StringIO.StringIO(fd.read())
-    fd.close()
-
-    gzipper = gzip.GzipFile(fileobj=stream)
-    in_classes_data = False
+    fd = urllib2.urlopen(FALLBACK_URL)
 
     while True:
-        line = gzipper.readline()
+        line = fd.readline()
         if not line:
             break
 
         line = line.strip()
-        if not line:
-            # An empty line is what separate the global metadata from the details
-            # about all classes
-            if not in_classes_data:
-                in_classes_data = True
+        if not line or line.startswith('#'):
             continue
 
-        # Skip comments
-        if line.startswith('#'):
+        data = line.split(',')
+        if len(data) < 2:
+            print >>sys.stderr, 'Cannot parse fallback line: %s' % line
             continue
 
-        # Global metadata about the details
-        if not in_classes_data:
-            if line.startswith('Last-Updated:'):
-                last_updated = line[len('Last-Updated:'):].strip()
+        name = data[0]
+        version = data[1]
+
+        if not name or not version:
+            print >>sys.stderr, 'Fallback line with nothing useful: %s' % line
             continue
 
-        ## Parse data about classes
-        # We only keep the first class for a given tarball (it's the more generic one)
-        # We ignore data when there's no version
-        data = line.split()
-        if len(data) != 3:
-            print >>sys.stderr, 'Cannot parse line: %s' % line
-            continue
+        metadatas.append((name, version))
 
-        (perl_class, version, tarball) = data
-        if version == 'undef':
-            continue
+    fd.close()
 
-        if tarballs.has_key(tarball):
-            continue
+    metadatas.sort()
 
-        tarballs[tarball] = (perl_class, version)
-
-    gzipper.close()
-
-    return (last_updated, tarballs)
-
-
-def perl_class_to_package(perl_class):
-    return 'perl-' + perl_class.replace('::', '-')
+    return metadatas
 
 
 #######################################################################
@@ -139,7 +112,7 @@ def main(args):
         if options.save:
             save_file = options.save
         else:
-            save_file = os.path.join(directory, 'versions-cpan')
+            save_file = os.path.join(directory, 'versions-fallback')
 
         if os.path.exists(save_file):
             if not os.path.isfile(save_file):
@@ -147,10 +120,9 @@ def main(args):
                 return 1
             if options.only_if_old:
                 stats = os.stat(save_file)
-                # Quit if it's less than 12-hours old
-                if time.time() - stats.st_mtime < 3600 * 12:
+                # Quit if it's less than 2-hours old
+                if time.time() - stats.st_mtime < 3600 * 2:
                     return 2
-
         else:
             safe_mkdir_p(os.path.dirname(save_file))
 
@@ -162,14 +134,14 @@ def main(args):
     ret = 1
 
     try:
-        (last_updated, tarballs) = parse_cpan_details()
+        metadatas = parse_fallback_data()
     except urllib2.URLError, e:
-        print >>sys.stderr, 'Error when downloading CPAN metadata: %s' % e
+        print >>sys.stderr, 'Error when downloading fallback metadata: %s' % e
     except urllib2.HTTPError, e:
-        print >>sys.stderr, 'Error when downloading CPAN metadata: server sent %s' % e
+        print >>sys.stderr, 'Error when downloading fallback metadata: server sent %s' % e
     else:
-        for (tarball, (perl_class, version)) in tarballs.iteritems():
-            out.write('cpan:%s:%s:%s\n' % (perl_class_to_package(perl_class), version, tarball))
+        for (name, version) in metadatas:
+            out.write('fallback:%s:%s:\n' % (name, version))
         ret = 0
 
     if not options.debug:
