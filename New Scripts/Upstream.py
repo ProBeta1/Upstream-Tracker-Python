@@ -8,6 +8,7 @@ import urllib2
 from urllib2 import HTTPError, URLError
 import BeautifulSoup
 import re
+from difflib import Match
 
 class Upstream(object):
     '''
@@ -71,8 +72,24 @@ class Upstream(object):
             return versions        
         
     def getLatestVersion(self, versions):
-                
-        return max(versions)
+        
+        sums=[]
+
+        for x in versions:
+            k=10**4#len(x.split('.'))
+            sum=0
+            
+            try:
+                for m in x.split('.'):
+                    sum=sum+int(m)*k/10
+                    k=k/10
+                sums.append(sum)
+            except:
+                sums.append(0)
+        
+        #print max(sums)
+        
+        return versions[sums.index(max(sums))]
     
 class HTTPLS(Upstream):
     
@@ -83,47 +100,64 @@ class HTTPLS(Upstream):
         
     def process(self, debugBool):
         
+        error=False
+        errorMsg=None
+        latestVer=None
+        path=None        
+        
         debug=debugBool
     
         data=Upstream.getPageData(self, self.url)
         
         if data==None:
-            print 'Unable to read page source'
-            return None
+            error=True
+            errorMsg='Unable to read page source'
+            return (latestVer, path, error, errorMsg)
             
         links=Upstream.getPageLinks(self, data)
         
         if links==None:
-            print 'Unable to find links on page'
-            return None
+            error=True
+            errorMsg='Unable to find links on page'
+            return (latestVer, path, error, errorMsg)
             
         if debug:
             print 'Links (' + self.pkgname + '): ',
-            print links
-            
+            return (latestVer, path, error, errorMsg)
+        
         versions=Upstream.getPageVersions(self, links, self.pkgname)
         
         if versions==None:
-            print 'Unable to extract version string'
-            return None
+            error=True
+            errorMsg='Unable to extract version string'
+            return (latestVer, path, error, errorMsg)
         
         if debug:
             print 'Versions (' + self.pkgname + '): ',
-            print versions
+            return (latestVer, path, error, errorMsg)
             
         latestVer=Upstream.getLatestVersion(self, versions)
         
         if latestVer==None:
-            print 'Unable to obtain latest version'
-            return None
+            error=True
+            errorMsg='Unable to obtain latest version'
+            return (latestVer, path, error, errorMsg)
 #        else:
 #            print 'Latest Version (' + self.pkgname + '): ' + str(latestVer)
         
         if debug:
             print 'Latest Version (' + self.pkgname + '): ',
-            print latestVer
+            return (latestVer, path, error, errorMsg)
+        
+        fileName='Not Found'
             
-        return latestVer
+        for link in links:
+            if link.find(latestVer)>=0:
+                fileName=link
+                
+        path=self.url.strip()+fileName.strip()
+        
+        return (latestVer, path, error, errorMsg)
     
 class DualHTTPLS(Upstream):
     
@@ -135,6 +169,11 @@ class DualHTTPLS(Upstream):
         
     def process(self, debugBool):
         
+        error=False
+        errorMsg=None
+        latestVer=None
+        path=None
+        
         debug=debugBool
         
         data1=Upstream.getPageData(self, self.url1)
@@ -144,14 +183,16 @@ class DualHTTPLS(Upstream):
         data=data1+data2
         
         if data1==None and data2==None:
-            print 'Unable to read page source'
-            return None
+            error=True
+            errorMsg='Unable to read page source'
+            return (latestVer, path, error, errorMsg)
             
         links=Upstream.getPageLinks(self, data)
         
         if links==None:
-            print 'Unable to find links on page'
-            return None
+            error=True
+            errorMsg='Unable to find links on page'
+            return (latestVer, path, error, errorMsg)
             
         if debug:
             print 'Links (' + self.pkgname + '): ',
@@ -160,8 +201,9 @@ class DualHTTPLS(Upstream):
         versions=Upstream.getPageVersions(self, links, self.pkgname)
         
         if versions==None:
-            print 'Unable to extract version string'
-            return None
+            error=True
+            errorMsg='Unable to extract version string'
+            return (latestVer, path, error, errorMsg)
         
         if debug:
             print 'Versions (' + self.pkgname + '): ',
@@ -170,8 +212,9 @@ class DualHTTPLS(Upstream):
         latestVer=Upstream.getLatestVersion(self, versions)
         
         if latestVer==None:
-            print 'Unable to obtain latest version'
-            return None
+            error=True
+            errorMsg='Unable to obtain latest version'
+            return (latestVer, path, error, errorMsg)
 #        else:
 #            print 'Latest Version (' + self.pkgname + '): ' + str(latestVer)
         
@@ -179,7 +222,7 @@ class DualHTTPLS(Upstream):
             print 'Latest Version (' + self.pkgname + '): ',
             print latestVer
             
-        return latestVer
+        return (latestVer, path, error, errorMsg)
     
 class Launchpad(Upstream):
     
@@ -190,6 +233,11 @@ class Launchpad(Upstream):
         
     def process(self, debugBool):
         
+        error=False
+        errorMsg=None
+        latestVer=None
+        path=None
+        
         debug=debugBool
         
         self.url='http://launchpad.net/'+self.url.strip()+'/+download'
@@ -197,14 +245,16 @@ class Launchpad(Upstream):
         data=Upstream.getPageData(self, self.url)
         
         if data==None:
-            print 'Unable to read page source'
-            return None
+            error=True
+            errorMsg='Unable to read page source'
+            return (latestVer, path, error, errorMsg)
             
         links=Upstream.getPageLinks(self, data)
         
         if links==None:
-            print 'Unable to find links on page'
-            return None
+            error=True
+            errorMsg='Unable to find links on page'
+            return (latestVer, path, error, errorMsg)
             
         if debug:
             print 'Links (' + self.pkgname + '): ',
@@ -213,8 +263,9 @@ class Launchpad(Upstream):
         versions=Upstream.getPageVersions(self, links, self.pkgname)
         
         if versions==None:
-            print 'Unable to extract version string'
-            return None
+            error=True
+            errorMsg='Unable to extract version string'
+            return (latestVer, path, error, errorMsg)
         
         if debug:
             print 'Versions (' + self.pkgname + '): ',
@@ -223,8 +274,9 @@ class Launchpad(Upstream):
         latestVer=Upstream.getLatestVersion(self, versions)
         
         if latestVer==None:
-            print 'Unable to obtain latest version'
-            return None
+            error=True
+            errorMsg='Unable to obtain latest version'
+            return (latestVer, path, error, errorMsg)
 #        else:
 #            print 'Latest Version (' + self.pkgname + '): ' + str(latestVer)
         
@@ -232,7 +284,7 @@ class Launchpad(Upstream):
             print 'Latest Version (' + self.pkgname + '): ',
             print latestVer
         
-        return latestVer
+        return (latestVer, path, error, errorMsg)
     
 class SVNLS(Upstream):
     
@@ -243,19 +295,26 @@ class SVNLS(Upstream):
         
     def process(self, debugBool):
         
+        error=False
+        errorMsg=None
+        latestVer=None
+        path=None
+        
         debug=debugBool
     
         data=Upstream.getPageData(self, self.url)
         
         if data==None:
-            print 'Unable to read page source'
-            return None
+            error=True
+            errorMsg='Unable to read page source'
+            return (latestVer, path, error, errorMsg)
             
         links=Upstream.getPageLinks(self, data, 'file')
         
         if links==None:
-            print 'Unable to find links on page'
-            return None
+            error=True
+            errorMsg='Unable to find links on page'
+            return (latestVer, path, error, errorMsg)
             
         if debug:
             print 'Links (' + self.pkgname + '): ',
@@ -264,8 +323,9 @@ class SVNLS(Upstream):
         versions=Upstream.getPageVersions(self, links, self.pkgname)
         
         if versions==None:
-            print 'Unable to extract version string'
-            return None
+            error=True
+            errorMsg='Unable to extract version string'
+            return (latestVer, path, error, errorMsg)
         
         if debug:
             print 'Versions (' + self.pkgname + '): ',
@@ -274,8 +334,9 @@ class SVNLS(Upstream):
         latestVer=Upstream.getLatestVersion(self, versions)
         
         if latestVer==None:
-            print 'Unable to obtain latest version'
-            return None
+            error=True
+            errorMsg='Unable to obtain latest version'
+            return (latestVer, path, error, errorMsg)
 #        else:
 #            print 'Latest Version (' + self.pkgname + '): ' + str(latestVer)
         
@@ -283,7 +344,7 @@ class SVNLS(Upstream):
             print 'Latest Version (' + self.pkgname + '): ',
             print latestVer
             
-        return latestVer
+        return (latestVer, path, error, errorMsg)
 
 class Google(Upstream):
     
@@ -293,6 +354,11 @@ class Google(Upstream):
         self.url=url
         
     def process(self, debugBool):
+        
+        error=False
+        errorMsg=None
+        latestVer=None
+        path=None
         
         debug=debugBool
     
@@ -308,14 +374,16 @@ class Google(Upstream):
         data=Upstream.getPageData(self, self.url)
         
         if data==None:
-            print 'Unable to read page source'
-            return None
+            error=True
+            errorMsg='Unable to read page source'
+            return (latestVer, path, error, errorMsg)
             
         links=Upstream.getPageLinks(self, data)
         
         if links==None:
-            print 'Unable to find links on page'
-            return None
+            error=True
+            errorMsg='Unable to find links on page'
+            return (latestVer, path, error, errorMsg)
             
         if debug:
             print 'Links (' + self.pkgname + '): ',
@@ -324,8 +392,9 @@ class Google(Upstream):
         versions=Upstream.getPageVersions(self, links, tarball)
         
         if versions==None:
-            print 'Unable to extract version string'
-            return None
+            error=True
+            errorMsg='Unable to extract version string'
+            return (latestVer, path, error, errorMsg)
         
         if debug:
             print 'Versions (' + self.pkgname + '): ',
@@ -334,8 +403,9 @@ class Google(Upstream):
         latestVer=Upstream.getLatestVersion(self, versions)
         
         if latestVer==None:
-            print 'Unable to obtain latest version'
-            return None
+            error=True
+            errorMsg='Unable to obtain latest version'
+            return (latestVer, path, error, errorMsg)
 #        else:
 #            print 'Latest Version (' + self.pkgname + '): ' + str(latestVer)
         
@@ -343,7 +413,7 @@ class Google(Upstream):
             print 'Latest Version (' + self.pkgname + '): ',
             print latestVer
             
-        return latestVer
+        return (latestVer, path, error, errorMsg)
 
 import ftplib
 import urlparse
@@ -356,6 +426,11 @@ class FTPLS(Upstream):
         self.url=url.strip()
         
     def process(self, debugBool):
+        
+        error=False
+        errorMsg=None
+        latestVer=None
+        path=None
         
         debug=debugBool
     
@@ -376,14 +451,16 @@ class FTPLS(Upstream):
                 raise
         
         if files==None:
-            print 'Unable to read page source'
-            return None
+            error=True
+            errorMsg='Unable to read page source'
+            return (latestVer, path, error, errorMsg)
         
         versions=Upstream.getPageVersions(self, files, self.pkgname)
         
         if versions==None:
-            print 'Unable to extract version string'
-            return None
+            error=True
+            errorMsg='Unable to extract version string'
+            return (latestVer, path, error, errorMsg)
         
         if debug:
             print 'Versions (' + self.pkgname + '): ',
@@ -392,8 +469,9 @@ class FTPLS(Upstream):
         latestVer=Upstream.getLatestVersion(self, versions)
         
         if latestVer==None:
-            print 'Unable to obtain latest version'
-            return None
+            error=True
+            errorMsg='Unable to obtain latest version'
+            return (latestVer, path, error, errorMsg)
 #        else:
 #            print 'Latest Version (' + self.pkgname + '): ' + str(latestVer)
         
@@ -401,7 +479,7 @@ class FTPLS(Upstream):
             print 'Latest Version (' + self.pkgname + '): ',
             print latestVer
             
-        return latestVer
+        return (latestVer, path, error, errorMsg)
 
 class Trac(Upstream):
     
@@ -412,19 +490,26 @@ class Trac(Upstream):
         
     def process(self, debugBool):
         
+        error=False
+        errorMsg=None
+        latestVer=None
+        path=None
+        
         debug=debugBool
     
         data=Upstream.getPageData(self, self.url)
         
         if data==None:
-            print 'Unable to read page source'
-            return None
+            error=True
+            errorMsg='Unable to read page source'
+            return (latestVer, path, error, errorMsg)
             
         links=Upstream.getPageLinks(self, data,'a', True)
         
         if links==None:
-            print 'Unable to find links on page'
-            return None
+            error=True
+            errorMsg='Unable to find links on page'
+            return (latestVer, path, error, errorMsg)
             
         if debug:
             print 'Links (' + self.pkgname + '): ',
@@ -433,8 +518,9 @@ class Trac(Upstream):
         versions=Upstream.getPageVersions(self, links, self.pkgname)
         
         if versions==None:
-            print 'Unable to extract version string'
-            return None
+            error=True
+            errorMsg='Unable to extract version string'
+            return (latestVer, path, error, errorMsg)
         
         if debug:
             print 'Versions (' + self.pkgname + '): ',
@@ -443,8 +529,9 @@ class Trac(Upstream):
         latestVer=Upstream.getLatestVersion(self, versions)
         
         if latestVer==None:
-            print 'Unable to obtain latest version'
-            return None
+            error=True
+            errorMsg='Unable to obtain latest version'
+            return (latestVer, path, error, errorMsg)
 #        else:
 #            print 'Latest Version (' + self.pkgname + '): ' + str(latestVer)
         
@@ -452,7 +539,7 @@ class Trac(Upstream):
             print 'Latest Version (' + self.pkgname + '): ',
             print latestVer
             
-        return latestVer
+        return (latestVer, path, error, errorMsg)
     
 class SubdirHTTPLS(Upstream):
     
@@ -463,19 +550,26 @@ class SubdirHTTPLS(Upstream):
         
     def process(self, debugBool):
         
+        error=False
+        errorMsg=None
+        latestVer=None
+        path=None
+        
         debug=debugBool
     
         data=Upstream.getPageData(self, self.url)
         
         if data==None:
-            print 'Unable to read page source'
-            return None
+            error=True
+            errorMsg='Unable to read page source'
+            return (latestVer, path, error, errorMsg)
             
         links=Upstream.getPageLinks(self, data)
         
         if links==None:
-            print 'Unable to find links on page'
-            return None
+            error=True
+            errorMsg='Unable to find links on page'
+            return (latestVer, path, error, errorMsg)
             
         if debug:
             print 'Links (' + self.pkgname + '): ',
@@ -501,8 +595,9 @@ class SubdirHTTPLS(Upstream):
         links=Upstream.getPageLinks(self, data)
         
         if links==None:
-            print 'Unable to find links on page'
-            return None
+            error=True
+            errorMsg='Unable to find links on page'
+            return (latestVer, path, error, errorMsg)
             
         if debug:
             print 'Links (' + self.pkgname + '): ',
@@ -511,8 +606,9 @@ class SubdirHTTPLS(Upstream):
         versions=Upstream.getPageVersions(self, links, self.pkgname)
         
         if versions==None:
-            print 'Unable to extract version string'
-            return None
+            error=True
+            errorMsg='Unable to extract version string'
+            return (latestVer, path, error, errorMsg)
         
         if debug:
             print 'Versions (' + self.pkgname + '): ',
@@ -521,8 +617,9 @@ class SubdirHTTPLS(Upstream):
         latestVer=Upstream.getLatestVersion(self, versions)
         
         if latestVer==None:
-            print 'Unable to obtain latest version'
-            return None
+            error=True
+            errorMsg='Unable to obtain latest version'
+            return (latestVer, path, error, errorMsg)
 #        else:
 #            print 'Latest Version (' + self.pkgname + '): ' + str(latestVer)
         
@@ -531,6 +628,6 @@ class SubdirHTTPLS(Upstream):
             print latestVer
             
         if latestVer==None:
-            return latestMajorVer
+            return (latestMajorVer, path, error, errorMsg)
         else:
-            return latestVer
+            return (latestVer, path, error, errorMsg)
