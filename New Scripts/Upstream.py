@@ -7,6 +7,7 @@ Created on Jun 24, 2012
 import urllib2
 from urllib2 import HTTPError, URLError
 import BeautifulSoup
+from BeautifulSoup import BeautifulStoneSoup
 import re
 from difflib import Match
 
@@ -631,3 +632,81 @@ class SubdirHTTPLS(Upstream):
             return (latestMajorVer, path, error, errorMsg)
         else:
             return (latestVer, path, error, errorMsg)
+
+class SF(Upstream):
+    
+    def __init__(self, pkgname, url):
+        Upstream.__init__(self)
+        self.pkgname=pkgname
+	if url.find('|')>=0:
+		self.url='http://sourceforge.net/api/file/index/project-id/'+url.split('|')[0].strip()+'/rss'
+	else:
+        	self.url='http://sourceforge.net/api/file/index/project-id/'+url.strip()+'/rss'
+	print self.url
+
+    def process(self, debugBool):
+        
+        error=False
+        errorMsg=None
+        latestVer=None
+        path=None        
+        
+        debug=debugBool
+    
+        data=Upstream.getPageData(self, self.url)
+
+        if data==None:
+            error=True
+            errorMsg='Unable to read page source'
+            return (latestVer, path, error, errorMsg)
+        
+	links=[]    
+        soup=BeautifulStoneSoup(data)
+	soup.prettify()
+	for x in soup.findAll('link'):
+	    if x.contents[0].find('/download')>=0:
+		links.append(x.contents[0].split('/')[-2])
+        
+        if links==None:
+            error=True
+            errorMsg='Unable to find links on page'
+            return (latestVer, path, error, errorMsg)
+            
+        if debug:
+            print 'Links (' + self.pkgname + '): ',
+            return (latestVer, path, error, errorMsg)
+        
+        versions=Upstream.getPageVersions(self, links, self.pkgname)
+        
+        if versions==None:
+            error=True
+            errorMsg='Unable to extract version string'
+            return (latestVer, path, error, errorMsg)
+        
+        if debug:
+            print 'Versions (' + self.pkgname + '): ',
+            return (latestVer, path, error, errorMsg)
+            
+        latestVer=Upstream.getLatestVersion(self, versions)
+        
+        if latestVer==None:
+            error=True
+            errorMsg='Unable to obtain latest version'
+            return (latestVer, path, error, errorMsg)
+#        else:
+#            print 'Latest Version (' + self.pkgname + '): ' + str(latestVer)
+        
+        if debug:
+            print 'Latest Version (' + self.pkgname + '): ',
+            return (latestVer, path, error, errorMsg)
+        
+        fileName='Not Found'
+            
+        for link in links:
+            if link.find(latestVer)>=0:
+                fileName=link
+                
+        path=self.url.strip()+fileName.strip()
+        
+        return (latestVer, path, error, errorMsg)
+
