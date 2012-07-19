@@ -5,8 +5,25 @@ from BeautifulSoup import BeautifulSoup
 import urllib2
 import re
 
-def getLatestVersion(versions):
+def getPageVersions(links):
+	versions=[]
+	for link in links:
+		if link[0].isdigit():
+			versions.append(link)
+		else:
+			try:
+				m=re.compile('^.*[-_]((\d\.*)+).*').match(link).group(1)
+				versions.append(m[0:-1])
+			except:
+				pass
 
+	if len(versions)==0:
+		return None
+	else:
+		return versions 
+
+def getLatestVersion(versionsOld):
+	versions=getPageVersions(versionsOld)
 	sums=[]
 	for x in versions:
 		k=10**4#len(x.split('.'))
@@ -18,14 +35,22 @@ def getLatestVersion(versions):
 			sums.append(sum)
 		except:
 			sums.append(0)
-	return versions[sums.index(max(sums))]
+
+	maxVer=versions[sums.index(max(sums))]
+
+	for x in versionsOld:
+		if x.find(maxVer)>=0:
+			return x
 
 def cleanLinks(links, regex):
 	newLinks=[]
 	for link in links:
 		try:
 			m=re.compile(regex).search(link).group(0)
-			newLinks.append(link[0:-1])
+			if link.find('/')>=0:
+				newLinks.append(link[0:-1])
+			else:
+				newLinks.append(link)
 		except:
 			m=None
 	return getLatestVersion(newLinks)
@@ -43,7 +68,8 @@ def parseRegex(path, regex):
 
 if __name__=='__main__':
 
-	sampleUrl='http://pan.rebelbase.com/download/releases/((\d\.*)+)/source/pan-((\d\.*)+).tar.bz2'
+#	sampleUrl='http://pan.rebelbase.com/download/releases/((\d\.*)+)/source/pan-((\d\.*)+).tar.bz2'
+	sampleUrl='http://coherence.beebits.net/download/Coherence-((\d\.*)+).tar.gz'
 	parsedUrl=urlparse(sampleUrl)
 
 	downloadPath=parsedUrl.scheme + '://' + parsedUrl.netloc
