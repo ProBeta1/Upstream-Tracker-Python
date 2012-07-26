@@ -8,77 +8,101 @@ import Upstream
 import urllib2
 import sys
 import CustomURL
+import threading
+import time
 from WebParse import WebParse
 
-def run():
+class Tracker(threading.Thread):
     
-    wp = WebParse('http://localhost','3000')
-    records=wp.getRecords()
-    
-    if records==None:
-        print 'No records found!'
-        sys.exit(1)
-    
-    for record in records:
+    count=0
+    limit=1
+    timeout=5 #seconds
+
+    def run(self):
         
-        pkgname=record['pkgname']
-        method=record['method']
-        url=record['url']
-        id=record['id']
+        wp = WebParse('http://localhost','3000')
+        records=wp.getRecords()
         
-        error=False
-        errorMsg=''
+        if records==None:
+            print 'No records found!'
+            sys.exit(1)
         
-        if method=='httpls':
-            upstream=Upstream.HTTPLS(pkgname, url)
-            (ver,loc) = upstream.process()
-            print 'Latest version of ' + pkgname + ' is : ' + ver
+        for record in records:
             
-        if method=='dualhttpls':
-            upstream=Upstream.DualHTTPLS(pkgname, url)
-            (ver,loc) = upstream.process()
-            print 'Latest version of ' + pkgname + ' is : ' + ver
+            pkgname=record['pkgname']
+            method=record['method']
+            url=record['url']
+            id=record['id']
             
-        if method=='lp':
-            upstream=Upstream.Launchpad(pkgname, url)
-            (ver,loc) = upstream.process()
-            print 'Latest version of ' + pkgname + ' is : ' + ver
+            error=False
+            errorMsg=''
             
-        if method=='svnls':
-            upstream=Upstream.SVNLS(pkgname, url)
-            (ver,loc) = upstream.process()
-            print 'Latest version of ' + pkgname + ' is : ' + ver
+            if method=='httpls':
+                print 'Latest version of ' + pkgname + ' is : ',
+                upstream=Upstream.HTTPLS(pkgname, url)
+                (ver,loc) = upstream.process()
+                print ver
+                
+            if method=='dualhttpls':
+                print 'Latest version of ' + pkgname + ' is : ',
+                upstream=Upstream.DualHTTPLS(pkgname, url)
+                (ver,loc) = upstream.process()
+                print ver
+                
+            if method=='lp':
+                print 'Latest version of ' + pkgname + ' is : ',
+                upstream=Upstream.Launchpad(pkgname, url)
+                (ver,loc) = upstream.process()
+                print ver
+                
+            if method=='svnls':
+                print 'Latest version of ' + pkgname + ' is : ',
+                upstream=Upstream.SVNLS(pkgname, url)
+                (ver,loc) = upstream.process()
+                print ver
+                
+            if method=='google':
+                print 'Latest version of ' + pkgname + ' is : ',
+                upstream=Upstream.Google(pkgname, url)
+                (ver,loc) = upstream.process()
+                print ver
+                
+            if method=='ftpls':
+                print 'Latest version of ' + pkgname + ' is : ',
+                upstream=Upstream.FTPLS(pkgname, url)
+                (ver,loc) = upstream.process()
+                print ver
+                
+            if method=='trac':
+                print 'Latest version of ' + pkgname + ' is : ',
+                upstream=Upstream.Trac(pkgname, url)
+                (ver,loc) = upstream.process()
+                print ver
+                
+            if method=='sf':
+                print 'Latest version of ' + pkgname + ' is : ',
+                upstream=Upstream.SF(pkgname, url)
+                (ver,loc) = upstream.process()
+                print ver
+                
+            if method=='custom':
+                print 'Latest version of ' + pkgname + ' is : ',
+                custom=CustomURL.CustomURL()
+                (ver, loc) = custom.process(url)
+                print ver
+                
+                
+            wp.updateRecord('error', str(error).lower(), id)
+            wp.updateRecord('processed', 'true', id)
+            wp.updateRecord('latest_ver', ver, id)
+            wp.updateRecord('loc', loc, id)
             
-        if method=='google':
-            upstream=Upstream.Google(pkgname, url)
-            (ver,loc) = upstream.process()
-            print 'Latest version of ' + pkgname + ' is : ' + ver
+            self.count+=1
+            if self.count%self.limit==0:
+                print 'Waiting ' + str(self.timeout) + ' seconds...'
+                time.sleep(self.timeout) 
             
-        if method=='ftpls':
-            upstream=Upstream.FTPLS(pkgname, url)
-            (ver,loc) = upstream.process()
-            print 'Latest version of ' + pkgname + ' is : ' + ver
-            
-        if method=='trac':
-            upstream=Upstream.Trac(pkgname, url)
-            (ver,loc) = upstream.process()
-            print 'Latest version of ' + pkgname + ' is : ' + ver
-            
-        if method=='sf':
-            upstream=Upstream.SF(pkgname, url)
-            (ver,loc) = upstream.process()
-            print 'Latest version of ' + pkgname + ' is : ' + ver
-            
-        if method=='custom':
-            custom=CustomURL.CustomURL()
-            (ver, loc) = custom.process(url)
-            print 'Latest version of ' + pkgname + ' is : ' + ver
-            
-            
-        wp.updateRecord('error', str(error).lower(), id)
-        wp.updateRecord('processed', 'true', id)
-        wp.updateRecord('latest_ver', ver, id)
-        wp.updateRecord('loc', loc, id)
         
 if __name__ == '__main__':
-    run()
+    tracker=Tracker()
+    tracker.start()
