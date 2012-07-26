@@ -1,7 +1,7 @@
 '''
-Created on Jul 2, 2012
+Created on 26-Jul-2012
 
-@author: N.B
+@author: nbprashanth
 '''
 
 import urllib2
@@ -26,8 +26,8 @@ class WebParse(object):
 #        except HTTPError, e:
 #            print 'HTTP Error - '+e.reason
 #            return None
-        except URLError, e:
-            print 'URL Error - '+e.reason
+        except urllib2.URLError, e:
+            print 'URL Error - '+str(e.reason)
             data=None
             return None
         
