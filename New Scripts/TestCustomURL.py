@@ -17,6 +17,12 @@ class TestCustomURL(unittest.TestCase):
         self.failIfEqual(url, (None, None), 'Failed custom URL test.')
         print url, latestVer
         
+    def test_customURL_1(self):
+        custom=CustomURL()
+        (latestVer, url) = custom.process('https://developer.berlios.de/project/showfiles.php?group_id=6784|http://(?:.*)iat-(\d+(?:\.\d+){1,3})-src.tar.(?:bz2|gz)')
+        self.failIfEqual(url, (None, None), 'Failed custom URL test.')
+        print url, latestVer
+        
                  
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

@@ -10,6 +10,19 @@ import urllib2
 import re
 
 class CustomURL:
+    
+    def getPageLinks(self, Url):
+        data=urllib2.urlopen(Url).read()
+        
+        soup=BeautifulSoup(data)
+        soup.prettify()
+        
+        links=[]
+        for link in soup.findAll('a'):
+            links.append(link['href'])
+            
+        return links
+    
     def getPageVersions(self, links):
         versions=[]
         for link in links:
@@ -27,8 +40,8 @@ class CustomURL:
         else:
             return versions 
 
-    def getLatestVersion(self,versionsOld):
-        versions=self.getPageVersions(versionsOld)
+    def getLatestVersion(self,versions, versionsOld):
+        
         sums=[]
         for x in versions:
             k=10**5#len(x.split('.'))
@@ -60,7 +73,8 @@ class CustomURL:
             except:
                 m=None
 
-        return self.getLatestVersion(newLinks)
+        versions=self.getPageVersions(newLinks)
+        return self.getLatestVersion(versions, newLinks)
 
     def parseRegex(self, path, regex):
         links=[]
@@ -75,27 +89,55 @@ class CustomURL:
         return latestVer
 
     def process(self, Url):
- 
-    #    sampleUrl='http://pan.rebelbase.com/download/releases/((\d\.*)+)/source/pan-((\d\.*)+).tar.bz2'
-    #    sampleUrl='http://www.freedesktop.org/software/ConsoleKit/dist/ConsoleKit-((\d\.*)+).tar.(.*)'
-        parsedUrl=urlparse(Url)
-
-        downloadPath=parsedUrl.scheme + '://' + parsedUrl.netloc
-
-        for folder in parsedUrl.path[1:].split('/'):
-            if folder.find('(')>=0 or folder.find(')')>=0:
-                #print 'Working on ' + downloadPath + ' for ' + folder
+        
+        if Url.find('|')>=0:
+        
+            baseUrl=Url.split("|")[0]
+            regex=Url.split("|")[0]
+            
+            links=self.getPageLinks(baseUrl)
+            versions=[]
+            newLinks=[]
+            for link in links:
                 try:
-                    latestVer=self.parseRegex(downloadPath, folder)
-                    downloadPath=downloadPath+'/'+latestVer
+                    m=re.compile('^.*[-_]((\d\.*)+).*').match(link).group(1)
+                    versions.append(m[0:-1])
+                    newLinks.append(link)
                 except:
-                    #print 'unable to parse Regex'
-                    downloadPath=None
-                    break
+                    pass
+            
+            if len(versions)>=0:
+                url = self.getLatestVersion(versions, newLinks)
+                latestVer = re.compile('^.*[-_]((\d\.*)+).*').match(url).group(1)[0:-1]
+                return latestVer, url
             else:
-                downloadPath=downloadPath+'/'+folder
-
-        if downloadPath:
-            return re.compile('^.*[-_]((\d\.*)+).*').match(latestVer).group(1)[0:-1], downloadPath
+                return None, None
+            
         else:
-            return None, None
+ 
+            parsedUrl=urlparse(Url)
+    
+            downloadPath=parsedUrl.scheme + '://' + parsedUrl.netloc
+    
+            for folder in parsedUrl.path[1:].split('/'):
+                if folder.find('(')>=0 or folder.find(')')>=0:
+                    #print 'Working on ' + downloadPath + ' for ' + folder
+                    try:
+                        latestVer=self.parseRegex(downloadPath, folder)
+                        downloadPath=downloadPath+'/'+latestVer
+                    except:
+                        #print 'unable to parse Regex'
+                        downloadPath=None
+                        break
+                else:
+                    downloadPath=downloadPath+'/'+folder
+    
+            if downloadPath:
+                return re.compile('^.*[-_]((\d\.*)+).*').match(latestVer).group(1)[0:-1], downloadPath
+            else:
+                return None, None
+            
+if __name__=='__main__':
+    custom=CustomURL()
+    (latestVer, url) = custom.process('https://developer.berlios.de/project/showfiles.php?group_id=6784|http://(?:.*)iat-(\d+(?:\.\d+){1,3})-src.tar.(?:bz2|gz)')
+    print url, latestVer
