@@ -91,6 +91,8 @@ class Tracker(threading.Thread):
                 (ver, loc) = custom.process(url)
                 print ver
                 
+            if ver==None:
+                error=True
                 
             wp.updateRecord('error', str(error).lower(), id)
             wp.updateRecord('processed', 'true', id)
