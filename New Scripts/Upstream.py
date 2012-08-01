@@ -211,11 +211,14 @@ class Trac(Upstream):
         return self.getLatestVer(links)
     
 class SF(Upstream):
-    def __init__(self, pkgname, url):
-        if url.find('|')>=0:
-            self.url='http://sourceforge.net/api/file/index/project-id/'+url.split('|')[0].strip()+'/rss'
+    def __init__(self, pkgname, url, name=False):
+        if name:
+            self.url='http://sourceforge.net/api/file/index/project-name/'+url.strip()+'/rss'            
         else:
-            self.url='http://sourceforge.net/api/file/index/project-id/'+url.strip()+'/rss'
+            if url.find('|')>=0:
+                self.url='http://sourceforge.net/api/file/index/project-id/'+url.split('|')[0].strip()+'/rss'
+            else:
+                self.url='http://sourceforge.net/api/file/index/project-id/'+url.strip()+'/rss'
         super(SF, self).__init__(pkgname, self.url)
     def process(self):
         links=[]

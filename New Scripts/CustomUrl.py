@@ -9,6 +9,8 @@ from BeautifulSoup import BeautifulSoup
 import urllib2
 import re
 
+import Upstream
+
 class CustomURL:
     
     def getPageLinks(self, Url):
@@ -114,8 +116,19 @@ class CustomURL:
                 return None, None
             
         else:
- 
+
             parsedUrl=urlparse(Url)
+
+            if parsedUrl.hostname.find('sf.net')>=0 or parsedUrl.hostname.find('sourceforge.net')>=0:
+                url=parsedUrl.path.split('/')[-2]
+                upstream=Upstream.SF(url, url, True)
+                (ver,loc) = upstream.process()
+
+                if ver:
+                    return ver, loc
+                else:
+                    return None, None
+                
     
             downloadPath=parsedUrl.scheme + '://' + parsedUrl.netloc
     
