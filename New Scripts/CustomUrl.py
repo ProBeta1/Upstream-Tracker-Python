@@ -149,8 +149,3 @@ class CustomURL:
                 return re.compile('^.*[-_]((\d\.*)+).*').match(latestVer).group(1)[0:-1], downloadPath
             else:
                 return None, None
-            
-if __name__=='__main__':
-    custom=CustomURL()
-    (latestVer, url) = custom.process('https://developer.berlios.de/project/showfiles.php?group_id=6784|http://(?:.*)iat-(\d+(?:\.\d+){1,3})-src.tar.(?:bz2|gz)')
-    print url, latestVer

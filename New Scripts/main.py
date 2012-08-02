@@ -7,7 +7,7 @@ Created on 23-Jul-2012
 import Upstream
 import urllib2
 import sys
-import CustomURL
+import CustomUrl
 import threading
 import time
 from WebParse import WebParse
@@ -87,7 +87,7 @@ class Tracker(threading.Thread):
                 
             if method=='custom':
                 print 'Latest version of ' + pkgname + ' is : ',
-                custom=CustomURL.CustomURL()
+                custom=CustomUrl.CustomURL()
                 (ver, loc) = custom.process(url)
                 print ver
                 
