@@ -1,7 +1,7 @@
 '''
-Created on 26-Jul-2012
+Created on Aug 2, 2012
 
-@author: nbprashanth
+@author: Prashanth
 '''
 
 import urllib2
