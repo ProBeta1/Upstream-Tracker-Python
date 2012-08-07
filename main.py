@@ -4,128 +4,113 @@ Created on Aug 2, 2012
 @author: Prashanth
 '''
 
-from Upstream import Upstream, HTTPLS, FTPLS, Google, Launchpad, SVNLS, Trac,\
-    SubdirHTTPLS, DualHTTPLS, Custom
-from WebParse import WebParse
+import threading, Queue
 import sys
+from WebParse import WebParse
+from Upstream import Upstream, HTTPLS, FTPLS, Google, Launchpad, SVNLS, Trac,\
+    SubdirHTTPLS, DualHTTPLS, Custom 
 
-if __name__ == '__main__':
+THREAD_LIMIT = 5             
+jobs = Queue.Queue(50)          
+singlelock = threading.Lock()   
+ 
+inputlist_ori = []
+
+wp = WebParse('http://localhost','3000')
+records=wp.getRecords()
     
-#    Uncomment the following lines to test
-        
-#    upstream=HTTPLS('http://coherence.beebits.net/download/', 'Coherence')
-#    (latestVer, location, error)=upstream.process()
-#    print latestVer, location, error
-#    
-#    upstream=FTPLS('ftp://ftp.gimp.org/pub/gimp/help/', 'gimp-help')
-#    (latestVer, location, error)=upstream.process()
-#    print latestVer, location, error
-#    
-#    upstream=Google('giver', 'giver')
-#    (latestVer, location, error)=upstream.process()
-#    print latestVer, location, error
-#    
-#    upstream=Launchpad('dee', 'dee')
-#    (latestVer, location, error)=upstream.process()
-#    print latestVer, location, error
-#    
-#    upstream=SVNLS('https://svn.revolutionlinux.com/MILLE/XTERM/trunk/libflashsupport/Tarballs/', 'libflashsupport')
-#    (latestVer, location, error)=upstream.process()
-#    print latestVer, location, error
-#    
-#    upstream=Trac('http://guake.org/downloads', 'guake')
-#    (latestVer, location, error)=upstream.process()
-#    print latestVer, location, error
-#    
-#    upstream=SubdirHTTPLS('http://ftp.gtk.org/pub/babl/', 'babl')
-#    (latestVer, location, error)=upstream.process()
-#    print latestVer, location, error
-#    
-#    upstream=Custom('http://www.abisource.com/downloads/abiword/([\d\.]+)/source/abiword-([\d\.]+)\.tar\.gz', 'abiword')
-#    (latestVer, location, error)=upstream.process()
-#    print latestVer, location, error
-#    
-#    upstream=Custom('ftp://ftp.kde.org/pub/kde/unstable/amarok/([0-9.]+)/src/amarok-([\d\.]+)\.tar\.bz2', 'amarok')
-#    (latestVer, location, error)=upstream.process()
-#    print latestVer, location, error
-#
-#    upstream=Custom('http://code.google.com/p/chmsee/downloads/list/chmsee-([\d\.]+)\.tar\.gz', 'chmsee')
-#    (latestVer, location, error)=upstream.process()
-#    print latestVer, location, error
+if records==None:
+    print 'No records found!'
+    sys.exit(1)
+    
+for record in records:
+    pkgname=record['pkgname']
+    method=record['method']
+    url=record['url']
+    id=record['id']
+    processed=record['processed']
+    
+    inputlist_ori.append([pkgname, method, url, id, processed])
+    
+def main(inputlist):
+    print "Inputlist received..."
+    print inputlist
+ 
+    print "Spawning the {0} threads.".format(THREAD_LIMIT)
+    for x in xrange(THREAD_LIMIT):
+        print "Thread {0} started.".format(x)
+        workerbee().start()
+ 
+    print "Putting stuff in queue"
+    for i in inputlist:
+        try:
+            jobs.put(i, block=True, timeout=5)
+        except:
+            singlelock.acquire()
+            print "The queue is full !"
+            singlelock.release()
+ 
+    singlelock.acquire()
+    print "Waiting for threads to finish."
+    singlelock.release()
+    jobs.join()         
 
-    wp = WebParse('http://localhost','3000')
-    records=wp.getRecords()
+class workerbee(threading.Thread):
+    
+    def process(self, pkgname, method, url, id):
         
-    if records==None:
-        print 'No records found!'
-        sys.exit(1)
-        
-    for record in records:
-            
-        pkgname=record['pkgname']
-        method=record['method']
-        url=record['url']
-        id=record['id']
+        wp = WebParse('http://localhost','3000')
         
         errorMsg=''
-        
+            
         if method=='httpls':
-            print 'Latest version of ' + pkgname + ' is : ',
             upstream=HTTPLS(url, pkgname)
             (ver,loc,error) = upstream.process()
-            print ver
+            print pkgname, ver, loc
             
         if method=='dualhttpls':
-            print 'Latest version of ' + pkgname + ' is : ',
             upstream=DualHTTPLS(url, pkgname)
             (ver,loc,error) = upstream.process()
-            print ver
+            print pkgname, ver, loc
             
         if method=='lp':
-            print 'Latest version of ' + pkgname + ' is : ',
             upstream=Launchpad(url, pkgname)
             (ver,loc,error) = upstream.process()
-            print ver
+            print pkgname, ver, loc
             
         if method=='svnls':
-            print 'Latest version of ' + pkgname + ' is : ',
             upstream=SVNLS(url, pkgname)
             (ver,loc,error) = upstream.process()
-            print ver
+            print pkgname, ver, loc
             
         if method=='google':
-            print 'Latest version of ' + pkgname + ' is : ',
             upstream=Google(url, pkgname)
             (ver,loc,error) = upstream.process()
-            print ver
+            print pkgname, ver, loc
             
         if method=='ftpls':
-            print 'Latest version of ' + pkgname + ' is : ',
             upstream=FTPLS(url, pkgname)
             (ver,loc,error) = upstream.process()
-            print ver
+            print pkgname, ver, loc
             
         if method=='trac':
-            print 'Latest version of ' + pkgname + ' is : ',
             upstream=Trac(url, pkgname)
             (ver,loc,error) = upstream.process()
-            print ver
+            print pkgname, ver, loc
             
         if method=='sf':
-            print 'Latest version of ' + pkgname + ' is : ',
             upstream=SF(url, pkgname)
             (ver,loc,error) = upstream.process()
-            print ver
+            print pkgname, ver, loc
             
         if method=='custom':
-            print 'Latest version of ' + pkgname + ' is : ',
             custom=Custom(url, pkgname)
             (ver,loc,error) = custom.process()
-            print ver
+            print pkgname, ver, loc
             
         if error==None:
             error=False
-            errorMsg=''
+            errorMsg='None'
         else:
             errorMsg=error
             error=True
@@ -137,4 +122,14 @@ if __name__ == '__main__':
         wp.updateRecord('latest_ver', ver, id)
         wp.updateRecord('loc', loc, id)
     
-#    
+    def run(self):
+        while 1:
+            try:
+                job = jobs.get(True,1)
+                self.process(job[0],job[1],job[2],job[3])
+                jobs.task_done()
+            except:
+                break
+
+if __name__ == '__main__':
+    main(inputlist_ori)    
