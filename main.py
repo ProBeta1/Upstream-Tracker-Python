@@ -33,26 +33,15 @@ for record in records:
     inputlist_ori.append([pkgname, method, url, id, processed])
     
 def main(inputlist):
-    print "Inputlist received..."
-    print inputlist
- 
-    print "Spawning the {0} threads.".format(THREAD_LIMIT)
     for x in xrange(THREAD_LIMIT):
-        print "Thread {0} started.".format(x)
         workerbee().start()
  
-    print "Putting stuff in queue"
     for i in inputlist:
         try:
             jobs.put(i, block=True, timeout=5)
         except:
-            singlelock.acquire()
-            print "The queue is full !"
-            singlelock.release()
- 
-    singlelock.acquire()
-    print "Waiting for threads to finish."
-    singlelock.release()
+            pass
+    
     jobs.join()         
 
 class workerbee(threading.Thread):
@@ -132,4 +121,4 @@ class workerbee(threading.Thread):
                 break
 
 if __name__ == '__main__':
-    main(inputlist_ori)    
+    main(inputlist_ori)
