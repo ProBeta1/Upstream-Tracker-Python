@@ -16,17 +16,8 @@ from BeautifulSoup import BeautifulSoup
 
 class Upstream(object):
     '''
-    classdocs
-    '''
-    
-    def checkValidExt(self, link):
-        validExt=['gz', 'bz2']
-        
-        for ext in validExt:
-            if link.split('.')[-1]==ext:
-                return True
-            
-        return False                                       
+classdocs
+'''
 
     def getPageLinks(self, url):
         
@@ -51,13 +42,11 @@ class Upstream(object):
             
             try:
                 for link in soup.findAll('a')+soup.findAll('file'):
-                    if self.checkValidExt(link['href']):
-                        links.append(scheme+'://'+hostname+path+link['href'])
+                    links.append(scheme+'://'+hostname+path+link['href'])
             except:
                 try:
                     for link in soup.findAll('a'):
-                        if self.checkValidExt(link['href']):
-                            links.append(scheme+'://'+hostname+path+str(link.contents).replace('\n','').strip())
+                        links.append(scheme+'://'+hostname+path+str(link.contents).replace('\n','').strip())
                 except:
                     pass
             
@@ -82,8 +71,7 @@ class Upstream(object):
             try:
                 files = ftp.nlst()
                 for file in files:
-                    if self.checkValidExt(file):
-                        links.append(scheme+'://'+hostname+'/'+file)
+                    links.append(scheme+'://'+hostname+'/'+file)
             except ftplib.error_perm, resp:
                 if str(resp) == "550 No files found":
                     print "No files in this directory"
@@ -98,10 +86,10 @@ class Upstream(object):
         
         for link in links:
             try:
-                match=re.match(regex, link)
+                match=re.match(regex, link.lower())
                 if match.group(0).find('/')>=0:
                     newLinks.append(match.group(1).split('/')[-1])
-                else:                
+                else:
                     newLinks.append(match.group(1))
             except Exception, e:
                 pass
@@ -151,25 +139,21 @@ class Upstream(object):
                         cleanVer=util.cleanVerStr(version)
                         if util.version_gt(cleanVer, latestVer):
                             latestVer=version
-                latestVerList.append(latestVer)        
-        
-        if len(latestVer)>0:
-            return latestVerList, None
+                latestVerList.append(latestVer)
+                
+        if len(latestVerList)>0:
+            return sorted(latestVerList), None
         else:
             return None, 'Unable to find Latest Version'
     
     def getLocation(self, links, latestVer):
         
-        locs=[]
-        for ver in latestVer:
-            for link in links:
-                if link.replace('-','.').replace('_','.').find(ver)>=0:
-                    locs.append(link)
-                    
-        if len(locs)>0:
-            return locs, None
-        else:
-            return None, 'Unable to find Location'
+        for link in links:
+            if link.replace('-','.').replace('_','.').find(latestVer)>=0:
+                if link.find('.tar')>=0:
+                    return link, None
+                
+        return None, 'Unable to find Location'
     
 class HTTPLS(Upstream):
     
@@ -190,8 +174,15 @@ class HTTPLS(Upstream):
         (latestVer, error) = self.getLatestVersion(versions, self.branch)
         if error:
             return None, None, error
-        (location, error) = self.getLocation(links, latestVer)
-        return latestVer, location, None
+        
+        locs=[]
+        for ver in latestVer:
+            (location, error) = self.getLocation(links, ver)
+            if error:
+                return None, None, error
+            locs.append(location)
+            
+        return latestVer, locs, None
     
 class DualHTTPLS(Upstream):
     
@@ -211,14 +202,21 @@ class DualHTTPLS(Upstream):
         if error:
             return None, None, error
         links=links1+links2
-        (versions, error)=self.getVersions(links, '^.*'+self.pkgname+'[_-](([0-9]+[\.\-])*[0-9]+)\.(?:tar.*|t[bg]z2?).*$')
+        (versions, error)=self.getVersions(links, '^.*'+self.pkgname.lower()+'[_-](([0-9]+[\.\-])*[0-9]+)\.(?:tar.*|t[bg]z2?).*$')
         if error:
             return None, None, error
         (latestVer, error) = self.getLatestVersion(versions, self.branch)
         if error:
             return None, None, error
-        (location, error) = self.getLocation(links, latestVer)
-        return latestVer, location, None
+        
+        locs=[]
+        for ver in latestVer:
+            (location, error) = self.getLocation(links, ver)
+            if error:
+                return None, None, error
+            locs.append(location)
+        
+        return latestVer, locs, None
     
 class FTPLS(Upstream):
     
@@ -239,8 +237,15 @@ class FTPLS(Upstream):
         (latestVer, error) = self.getLatestVersion(versions, self.branch)
         if error:
             return None, None, error
-        (location, error) = self.getLocation(links, latestVer)
-        return latestVer, location, None
+        
+        locs=[]
+        for ver in latestVer:
+            (location, error) = self.getLocation(links, ver)
+            if error:
+                return None, None, error
+            locs.append(location)
+            
+        return latestVer, locs, None
     
 class Google(Upstream):
     
@@ -261,12 +266,15 @@ class Google(Upstream):
         (latestVer, error) = self.getLatestVersion(versions, self.branch)
         if error:
             return None, None, error
-        (location, error) = self.getLocation(links, latestVer)
-        newLoc=[]
-        for loc in location:
-            newLoc.append(urlparse(self.url).scheme+'://'+loc.split('//')[2])
-            
-        return latestVer, newLoc, None
+        locs=[]
+        for ver in latestVer:
+            (location, error) = self.getLocation(links, ver)
+            if error:
+                return None, None, error
+            location=urlparse(self.url).scheme+'://'+location.split('//')[2]
+            locs.append(location)
+        
+        return latestVer, location, None
     
 class Launchpad(Upstream):
 
@@ -287,11 +295,14 @@ class Launchpad(Upstream):
         (latestVer, error) = self.getLatestVersion(versions, self.branch)
         if error:
             return None, None, error
-        (location, error) = self.getLocation(links, latestVer)
-        newLoc=[]
-        for loc in location:
-            newLoc.append(loc.replace('http://launchpad.net/dee/+download',''))
-        return latestVer, newLoc, None
+        locs=[]
+        for ver in latestVer:
+            (location, error) = self.getLocation(links, ver)
+            if error:
+                return None, None, error
+            location=location.replace('http://launchpad.net/dee/+download','')
+            locs.append(location)
+        return latestVer, location, None
     
 class SVNLS(Upstream):
     
@@ -312,7 +323,7 @@ class SVNLS(Upstream):
         (latestVer, error) = self.getLatestVersion(versions, self.branch)
         if error:
             return None, None, error
-        (location, error) = self.getLocation(links, latestVer)
+        (location, error) = self.getLocation(links, latestVer[0])
         return latestVer, location, None
     
 class Trac(Upstream):
@@ -334,7 +345,12 @@ class Trac(Upstream):
         (latestVer, error) = self.getLatestVersion(versions, self.branch)
         if error:
             return None, None, error
-        (location, error) = self.getLocation(links, latestVer)
+        locs=[]
+        for ver in latestVer:
+            (location, error) = self.getLocation(links, ver)
+            if error:
+                return None, None, error
+            locs.append(location)
         return latestVer, location, None
     
 class SubdirHTTPLS(Upstream):
@@ -358,7 +374,7 @@ class SubdirHTTPLS(Upstream):
             (versions, error)=self.getVersions(links, '^.*/([\d\.]+)/')
             if error:
                 return None, None, error
-            (latestVer, error) = self.getLatestVersion(versions[0], self.branch)
+            (latestVer, error) = self.getLatestVersion(versions, self.branch)
             
             self.url=self.url+latestVer+'/'
             
@@ -369,7 +385,7 @@ class SubdirHTTPLS(Upstream):
             for link in links:
                 if link.find(self.pkgname)>=0 and link.find('.tar')>=0:
                     flag=1
-                    break            
+                    break
                 
             if flag==1:
                 break
@@ -377,10 +393,15 @@ class SubdirHTTPLS(Upstream):
         (versions, error)=self.getVersions(links, '^.*'+self.pkgname+'[_-](([0-9]+[\.\-])*[0-9]+)\.(?:tar.*|t[bg]z2?).*$')
         if error:
             return None, None, error
-        (latestVer, error) = self.getLatestVersion(versions)
+        (latestVer, error) = self.getLatestVersion(versions, self.branch)
         if error:
             return None, None, error
-        (location, error) = self.getLocation(links, latestVer)
+        locs=[]
+        for ver in latestVer:
+            (location, error) = self.getLocation(links, ver)
+            if error:
+                return None, None, error
+            locs.append(location)
         return latestVer, location, None
     
 class Custom(Upstream):
@@ -401,19 +422,18 @@ class Custom(Upstream):
         if error:
             return None, None, error
         
-#        newVersions=[]
-#        for version in versions:
-#            m=re.sub('-','',re.sub('[a-zA-Z-_]', '', version))
-#            m=m.replace('..','.')
-#            newVersions.append(m)
-
-        newVersions=versions
-                                
-        (latestVer, error) = self.getLatestVersion(newVersions, self.branch)
+        newVersions=[]
+        for version in versions:
+            m=re.sub('-','',re.sub('[a-zA-Z-_]', '', version))
+            m=m.replace('..','.')
+            newVersions.append(m)
+        
+        (latestVer, error) = self.getLatestVersion(newVersions,self.branch)
         if error:
             return None, None, error
         
-        (location, error) = self.getLocation(links, latestVer)
+        (location, error) = self.getLocation(links, latestVer[0])
+        
         return latestVer, location, None
     
     def processSf(self):
@@ -430,7 +450,7 @@ class Custom(Upstream):
                     try:
                         link=node.data.replace('/download','')
                         match=re.match('^.*/'+regex, link)
-                        links.append(match.group(0))            
+                        links.append(match.group(0))
                     except Exception, e:
                         pass
                     
@@ -443,7 +463,7 @@ class Custom(Upstream):
             m=re.sub('-','',re.sub('[a-zA-Z-_]', '', version))
             m=m.replace('..','.')
             newVersions.append(m)
-
+        
         (latestVer, error) = self.getLatestVersion(newVersions, self.branch)
         if error:
             return None, None, error
@@ -452,11 +472,11 @@ class Custom(Upstream):
         if error:
             return None, None, error
         
-        return latestVer[0], location, None
+        return latestVer, location, None
         
     def process(self):
         
-        parsedUrl=urlparse(str(self.url))
+        parsedUrl=urlparse(self.url)
         downloadDir=parsedUrl.scheme+'://'+parsedUrl.hostname
         
         if parsedUrl.hostname.find('sf.net')>=0 or parsedUrl.hostname.find('sourceforge.net')>=0:
@@ -470,12 +490,8 @@ class Custom(Upstream):
                         downloadDir=downloadDir[:-1]
                         
                 (latestVer, loc, error)=self.parseRegex(downloadDir, dir)
-                
-                if loc!=None and loc.find('/')>=0: 
-                    if downloadDir[-1]=='/':
-                        downloadDir+=loc.split('/')[-1]
-                    else:
-                        downloadDir+='/'+loc.split('/')[-1]
+                if loc!=None and loc.find('/')>=0:
+                    downloadDir+=loc.split('/')[-1]
                 else:
                     downloadDir+=latestVer[0]+'/'
             else:
