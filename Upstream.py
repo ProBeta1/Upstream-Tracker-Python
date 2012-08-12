@@ -147,9 +147,8 @@ classdocs
             return None, 'Unable to find Latest Version'
     
     def getLocation(self, links, latestVer):
-        
         for link in links:
-            if link.replace('-','.').replace('_','.').find(latestVer)>=0:
+            if link.find(latestVer)>=0:
                 if link.find('.tar')>=0:
                     return link, None
                 
@@ -183,6 +182,52 @@ class HTTPLS(Upstream):
             locs.append(location)
             
         return latestVer, locs, None
+
+class SF(Upstream):
+    
+    def __init__(self, url, pkgname, branch):
+        
+        self.url=url
+        self.pkgname=pkgname
+        self.branch=branch
+        
+    def process(self):
+        
+        doc = minidom.parseString(urllib2.urlopen('/'.join(self.url.split('/')[:-1])).read())
+        items = doc.getElementsByTagName('item')
+        
+        links=[]
+        for item in items:
+            linkObj=item.getElementsByTagName('link')[0]
+            nodes = linkObj.childNodes
+            for node in nodes:
+                if node.nodeType == node.TEXT_NODE:
+                    try:
+                        link=node.data.replace('/download','')
+                        links.append(link)
+                    except Exception, e:
+                        pass
+        
+        (versions, error)=self.getVersions(links, '^.*'+self.pkgname+'[_-](([0-9]+[\.\-])*[0-9]+)\.(?:tar.*|t[bg]z2?).*$')
+        if error:
+            return None, None, error
+        
+        newVersions=[]
+        for version in versions:
+            m=re.sub('-','',re.sub('[a-zA-Z-_]', '', version))
+            m=m.replace('..','.')
+            newVersions.append(m)
+            
+        (latestVer, error) = self.getLatestVersion(newVersions, self.branch)
+        if error:
+            return None, None, error
+        
+        (location, error) = self.getLocation(links, latestVer[0])
+        if error:
+            return None, None, error
+        
+        return latestVer, location, None
+
     
 class DualHTTPLS(Upstream):
     
@@ -463,12 +508,12 @@ class Custom(Upstream):
             m=re.sub('-','',re.sub('[a-zA-Z-_]', '', version))
             m=m.replace('..','.')
             newVersions.append(m)
-        
+            
         (latestVer, error) = self.getLatestVersion(newVersions, self.branch)
         if error:
             return None, None, error
         
-        (location, error) = self.getLocation(links, latestVer)
+        (location, error) = self.getLocation(links, latestVer[0])
         if error:
             return None, None, error
         

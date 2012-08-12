@@ -2,7 +2,7 @@ import threading, Queue
 import sys
 from WebParse import WebParse
 from Upstream import Upstream, HTTPLS, FTPLS, Google, Launchpad, SVNLS, Trac,\
-    SubdirHTTPLS, DualHTTPLS, Custom
+    SubdirHTTPLS, DualHTTPLS, Custom, SF
 
 THREAD_LIMIT = 5             
 jobs = Queue.Queue(50)          
