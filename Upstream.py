@@ -18,6 +18,15 @@ class Upstream(object):
     '''
     classdocs
     '''
+    
+    def checkValidExt(self, link):
+        validExt=['gz', 'bz2']
+        
+        for ext in validExt:
+            if link.split('.')[-1]==ext:
+                return True
+            
+        return False                                       
 
     def getPageLinks(self, url):
         
@@ -42,11 +51,13 @@ class Upstream(object):
             
             try:
                 for link in soup.findAll('a')+soup.findAll('file'):
-                    links.append(scheme+'://'+hostname+path+link['href'])
+                    if self.checkValidExt(link['href']):
+                        links.append(scheme+'://'+hostname+path+link['href'])
             except:
                 try:
                     for link in soup.findAll('a'):
-                        links.append(scheme+'://'+hostname+path+str(link.contents).replace('\n','').strip())
+                        if self.checkValidExt(link['href']):
+                            links.append(scheme+'://'+hostname+path+str(link.contents).replace('\n','').strip())
                 except:
                     pass
             
@@ -71,7 +82,8 @@ class Upstream(object):
             try:
                 files = ftp.nlst()
                 for file in files:
-                    links.append(scheme+'://'+hostname+'/'+file)
+                    if self.checkValidExt(file):
+                        links.append(scheme+'://'+hostname+'/'+file)
             except ftplib.error_perm, resp:
                 if str(resp) == "550 No files found":
                     print "No files in this directory"
@@ -100,34 +112,72 @@ class Upstream(object):
         else:
             return newLinks, error
         
-    def getLatestVersion(self, versions):
+    def getLatestVersion(self, versions, branch):
+        
+        latestVerList=[]
         
         util=Util.Util()
-        latestVer=versions[0].replace('-','.').replace('_','.')
+#        latestVer=versions[0].replace('-','.').replace('_','.')
+#        
+#        for version in versions:
+#            if util.version_gt(version.replace('-','.').replace('_','.'), latestVer):
+#                latestVer=version
+#        latestVerList.append(latestVer)       
+#        
+#        for x in range(0,int(latestVer.split('.')[0]+latestVer.split('.')[1])):
+#            latestVer='0.0'
+#            for version in versions:
+#                if int(version.replace('-','.').replace('_','.').split('.')[0])==x:
+#                    if util.version_gt(version.replace('-','.').replace('_','.'), latestVer):
+#                        latestVer=version
+#            if latestVer!='0.0':
+#                latestVerList.append(latestVer)
+
+        if branch=='latest':
+            latestVer=versions[0]
+            for version in versions:
+                cleanVer=util.cleanVerStr(version)
+                if util.version_gt(cleanVer, util.cleanVerStr(latestVer)):
+                    latestVer=version                    
+            latestVerList.append(latestVer)
+        else:
+            for eachBranch in branch.split(','):
+                latestVer=util.cleanVerStr(versions[0])
+                for version in versions:
+                    br=eachBranch.strip().replace('.','\.')
+                    br=br+'.*'
+                    x=re.match(br, version)
+                    if x:
+                        cleanVer=util.cleanVerStr(version)
+                        if util.version_gt(cleanVer, latestVer):
+                            latestVer=version
+                latestVerList.append(latestVer)        
         
-        for version in versions:
-            if util.version_gt(version.replace('-','.').replace('_','.'), latestVer):
-                latestVer=version
-            
-        if latestVer:
-            return latestVer, None
+        if len(latestVer)>0:
+            return latestVerList, None
         else:
             return None, 'Unable to find Latest Version'
     
     def getLocation(self, links, latestVer):
         
-        for link in links:
-            if link.replace('-','.').replace('_','.').find(latestVer)>=0:
-                if link.find('.tar')>=0:
-                    return link, None
-        return None, 'Unable to find Location'
+        locs=[]
+        for ver in latestVer:
+            for link in links:
+                if link.replace('-','.').replace('_','.').find(ver)>=0:
+                    locs.append(link)
+                    
+        if len(locs)>0:
+            return locs, None
+        else:
+            return None, 'Unable to find Location'
     
 class HTTPLS(Upstream):
     
-    def __init__(self, url, pkgname):
+    def __init__(self, url, pkgname, branch):
         
         self.url=url
         self.pkgname=pkgname
+        self.branch=branch
         
     def process(self):
         
@@ -137,7 +187,7 @@ class HTTPLS(Upstream):
         (versions, error)=self.getVersions(links, '^.*'+self.pkgname+'[_-](([0-9]+[\.\-])*[0-9]+)\.(?:tar.*|t[bg]z2?).*$')
         if error:
             return None, None, error
-        (latestVer, error) = self.getLatestVersion(versions)
+        (latestVer, error) = self.getLatestVersion(versions, self.branch)
         if error:
             return None, None, error
         (location, error) = self.getLocation(links, latestVer)
@@ -145,11 +195,12 @@ class HTTPLS(Upstream):
     
 class DualHTTPLS(Upstream):
     
-    def __init__(self, url, pkgname):
+    def __init__(self, url, pkgname, branch):
         
         self.url1=url.split('|')[0]
         self.url2=url.split('|')[1]
         self.pkgname=pkgname
+        self.branch=branch
         
     def process(self):
         
@@ -163,7 +214,7 @@ class DualHTTPLS(Upstream):
         (versions, error)=self.getVersions(links, '^.*'+self.pkgname+'[_-](([0-9]+[\.\-])*[0-9]+)\.(?:tar.*|t[bg]z2?).*$')
         if error:
             return None, None, error
-        (latestVer, error) = self.getLatestVersion(versions)
+        (latestVer, error) = self.getLatestVersion(versions, self.branch)
         if error:
             return None, None, error
         (location, error) = self.getLocation(links, latestVer)
@@ -171,10 +222,11 @@ class DualHTTPLS(Upstream):
     
 class FTPLS(Upstream):
     
-    def __init__(self, url, pkgname):
+    def __init__(self, url, pkgname, branch):
         
         self.url=url
         self.pkgname=pkgname
+        self.branch=branch
         
     def process(self):
         
@@ -184,7 +236,7 @@ class FTPLS(Upstream):
         (versions, error)=self.getVersions(links, '^.*'+self.pkgname+'[_-](([0-9]+[\.\-])*[0-9]+)\.(?:tar.*|t[bg]z2?).*$')
         if error:
             return None, None, error
-        (latestVer, error) = self.getLatestVersion(versions)
+        (latestVer, error) = self.getLatestVersion(versions, self.branch)
         if error:
             return None, None, error
         (location, error) = self.getLocation(links, latestVer)
@@ -192,10 +244,11 @@ class FTPLS(Upstream):
     
 class Google(Upstream):
     
-    def __init__(self, url, pkgname):
+    def __init__(self, url, pkgname, branch):
         
         self.url='http://code.google.com/p/'+url.strip()+'/downloads/list'
         self.pkgname=pkgname
+        self.branch=branch
         
     def process(self):
         
@@ -205,19 +258,23 @@ class Google(Upstream):
         (versions, error)=self.getVersions(links, '^.*'+self.pkgname+'[_-](([0-9]+[\.\-])*[0-9]+)\.(?:tar.*|t[bg]z2?).*$')
         if error:
             return None, None, error
-        (latestVer, error) = self.getLatestVersion(versions)
+        (latestVer, error) = self.getLatestVersion(versions, self.branch)
         if error:
             return None, None, error
         (location, error) = self.getLocation(links, latestVer)
-        location=urlparse(self.url).scheme+'://'+location.split('//')[2]
-        return latestVer, location, None
+        newLoc=[]
+        for loc in location:
+            newLoc.append(urlparse(self.url).scheme+'://'+loc.split('//')[2])
+            
+        return latestVer, newLoc, None
     
 class Launchpad(Upstream):
 
-    def __init__(self, url, pkgname):
+    def __init__(self, url, pkgname, branch):
         
         self.url='http://launchpad.net/'+url.strip()+'/+download'
         self.pkgname=pkgname
+        self.branch=branch
         
     def process(self):
         
@@ -227,19 +284,22 @@ class Launchpad(Upstream):
         (versions, error)=self.getVersions(links, '^.*'+self.pkgname+'[_-](([0-9]+[\.\-])*[0-9]+)\.(?:tar.*|t[bg]z2?).*$')
         if error:
             return None, None, error
-        (latestVer, error) = self.getLatestVersion(versions)
+        (latestVer, error) = self.getLatestVersion(versions, self.branch)
         if error:
             return None, None, error
         (location, error) = self.getLocation(links, latestVer)
-        location=location.replace('http://launchpad.net/dee/+download','')
-        return latestVer, location, None
+        newLoc=[]
+        for loc in location:
+            newLoc.append(loc.replace('http://launchpad.net/dee/+download',''))
+        return latestVer, newLoc, None
     
 class SVNLS(Upstream):
     
-    def __init__(self, url, pkgname):
+    def __init__(self, url, pkgname, branch):
         
         self.url=url
         self.pkgname=pkgname
+        self.branch=branch
         
     def process(self):
         
@@ -249,7 +309,7 @@ class SVNLS(Upstream):
         (versions, error)=self.getVersions(links, '^.*'+self.pkgname+'[_-](([0-9]+[\.\-])*[0-9]+)\.(?:tar.*|t[bg]z2?).*$')
         if error:
             return None, None, error
-        (latestVer, error) = self.getLatestVersion(versions)
+        (latestVer, error) = self.getLatestVersion(versions, self.branch)
         if error:
             return None, None, error
         (location, error) = self.getLocation(links, latestVer)
@@ -257,10 +317,11 @@ class SVNLS(Upstream):
     
 class Trac(Upstream):
     
-    def __init__(self, url, pkgname):
+    def __init__(self, url, pkgname, branch):
         
         self.url=url
         self.pkgname=pkgname
+        self.branch=branch
         
     def process(self):
         
@@ -270,7 +331,7 @@ class Trac(Upstream):
         (versions, error)=self.getVersions(links, '^.*'+self.pkgname+'[_-](([0-9]+[\.\-])*[0-9]+)\.(?:tar.*|t[bg]z2?).*$')
         if error:
             return None, None, error
-        (latestVer, error) = self.getLatestVersion(versions)
+        (latestVer, error) = self.getLatestVersion(versions, self.branch)
         if error:
             return None, None, error
         (location, error) = self.getLocation(links, latestVer)
@@ -278,10 +339,11 @@ class Trac(Upstream):
     
 class SubdirHTTPLS(Upstream):
     
-    def __init__(self, url, pkgname):
+    def __init__(self, url, pkgname, branch):
         
         self.url=url
         self.pkgname=pkgname
+        self.branch=branch
         
     def process(self):
         
@@ -296,7 +358,7 @@ class SubdirHTTPLS(Upstream):
             (versions, error)=self.getVersions(links, '^.*/([\d\.]+)/')
             if error:
                 return None, None, error
-            (latestVer, error) = self.getLatestVersion(versions)
+            (latestVer, error) = self.getLatestVersion(versions[0], self.branch)
             
             self.url=self.url+latestVer+'/'
             
@@ -323,10 +385,11 @@ class SubdirHTTPLS(Upstream):
     
 class Custom(Upstream):
     
-    def __init__(self, url, pkgname):
+    def __init__(self, url, pkgname, branch):
         
         self.url=url
         self.pkgname=pkgname
+        self.branch=branch
         
     def parseRegex(self, path, regex):
         
@@ -338,13 +401,15 @@ class Custom(Upstream):
         if error:
             return None, None, error
         
-        newVersions=[]
-        for version in versions:
-            m=re.sub('-','',re.sub('[a-zA-Z-_]', '', version))
-            m=m.replace('..','.')
-            newVersions.append(m)
-        
-        (latestVer, error) = self.getLatestVersion(newVersions)
+#        newVersions=[]
+#        for version in versions:
+#            m=re.sub('-','',re.sub('[a-zA-Z-_]', '', version))
+#            m=m.replace('..','.')
+#            newVersions.append(m)
+
+        newVersions=versions
+                                
+        (latestVer, error) = self.getLatestVersion(newVersions, self.branch)
         if error:
             return None, None, error
         
@@ -378,8 +443,8 @@ class Custom(Upstream):
             m=re.sub('-','',re.sub('[a-zA-Z-_]', '', version))
             m=m.replace('..','.')
             newVersions.append(m)
-        
-        (latestVer, error) = self.getLatestVersion(newVersions)
+
+        (latestVer, error) = self.getLatestVersion(newVersions, self.branch)
         if error:
             return None, None, error
         
@@ -387,11 +452,11 @@ class Custom(Upstream):
         if error:
             return None, None, error
         
-        return latestVer, location, None
+        return latestVer[0], location, None
         
     def process(self):
         
-        parsedUrl=urlparse(self.url)
+        parsedUrl=urlparse(str(self.url))
         downloadDir=parsedUrl.scheme+'://'+parsedUrl.hostname
         
         if parsedUrl.hostname.find('sf.net')>=0 or parsedUrl.hostname.find('sourceforge.net')>=0:
@@ -405,10 +470,14 @@ class Custom(Upstream):
                         downloadDir=downloadDir[:-1]
                         
                 (latestVer, loc, error)=self.parseRegex(downloadDir, dir)
+                
                 if loc!=None and loc.find('/')>=0: 
-                    downloadDir+=loc.split('/')[-1]
+                    if downloadDir[-1]=='/':
+                        downloadDir+=loc.split('/')[-1]
+                    else:
+                        downloadDir+='/'+loc.split('/')[-1]
                 else:
-                    downloadDir+=latestVer+'/'
+                    downloadDir+=latestVer[0]+'/'
             else:
                 downloadDir+=dir+'/'
         

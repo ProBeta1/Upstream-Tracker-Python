@@ -1,14 +1,8 @@
-'''
-Created on Aug 2, 2012
-
-@author: Prashanth
-'''
-
 import threading, Queue
 import sys
 from WebParse import WebParse
 from Upstream import Upstream, HTTPLS, FTPLS, Google, Launchpad, SVNLS, Trac,\
-    SubdirHTTPLS, DualHTTPLS, Custom 
+    SubdirHTTPLS, DualHTTPLS, Custom
 
 THREAD_LIMIT = 5             
 jobs = Queue.Queue(50)          
@@ -29,8 +23,9 @@ for record in records:
     url=record['url']
     id=record['id']
     processed=record['processed']
+    branch=record['branch']
     
-    inputlist_ori.append([pkgname, method, url, id, processed])
+    inputlist_ori.append([pkgname, method, url, id, processed, branch])
     
 def main(inputlist):
     for x in xrange(THREAD_LIMIT):
@@ -46,54 +41,54 @@ def main(inputlist):
 
 class workerbee(threading.Thread):
     
-    def process(self, pkgname, method, url, id):
+    def process(self, pkgname, method, url, id, branch):
         
         wp = WebParse('http://localhost','3000')
         
         errorMsg=''
-            
+        
         if method=='httpls':
-            upstream=HTTPLS(url, pkgname)
+            upstream=HTTPLS(url, pkgname, branch)
             (ver,loc,error) = upstream.process()
             print pkgname, ver, loc
             
         if method=='dualhttpls':
-            upstream=DualHTTPLS(url, pkgname)
+            upstream=DualHTTPLS(url, pkgname, branch)
             (ver,loc,error) = upstream.process()
             print pkgname, ver, loc
             
         if method=='lp':
-            upstream=Launchpad(url, pkgname)
+            upstream=Launchpad(url, pkgname, branch)
             (ver,loc,error) = upstream.process()
             print pkgname, ver, loc
             
         if method=='svnls':
-            upstream=SVNLS(url, pkgname)
+            upstream=SVNLS(url, pkgname, branch)
             (ver,loc,error) = upstream.process()
             print pkgname, ver, loc
             
         if method=='google':
-            upstream=Google(url, pkgname)
+            upstream=Google(url, pkgname, branch)
             (ver,loc,error) = upstream.process()
             print pkgname, ver, loc
             
         if method=='ftpls':
-            upstream=FTPLS(url, pkgname)
+            upstream=FTPLS(url, pkgname, branch)
             (ver,loc,error) = upstream.process()
             print pkgname, ver, loc
             
         if method=='trac':
-            upstream=Trac(url, pkgname)
+            upstream=Trac(url, pkgname, branch)
             (ver,loc,error) = upstream.process()
             print pkgname, ver, loc
             
         if method=='sf':
-            upstream=SF(url, pkgname)
+            upstream=SF(url, pkgname, branch)
             (ver,loc,error) = upstream.process()
             print pkgname, ver, loc
             
         if method=='custom':
-            custom=Custom(url, pkgname)
+            custom=Custom(url, pkgname, branch)
             (ver,loc,error) = custom.process()
             print pkgname, ver, loc
             
@@ -115,7 +110,7 @@ class workerbee(threading.Thread):
         while 1:
             try:
                 job = jobs.get(True,1)
-                self.process(job[0],job[1],job[2],job[3])
+                self.process(job[0],job[1],job[2],job[3], job[5])
                 jobs.task_done()
             except:
                 break

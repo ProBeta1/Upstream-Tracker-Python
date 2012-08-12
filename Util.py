@@ -10,7 +10,15 @@ class Util(object):
     '''
     classdocs
     '''
-
+    
+    def cleanVerStr(self, version):
+        temp=version.replace('-','.').replace('_','.')
+        ver=re.sub('[a-zA-Z]', '.', temp)
+        
+        while ver.find('..')>=0:
+            ver=ver.replace('..','.')
+            
+        return ver
 
     def _strict_bigger_version(self, a, b):
         a_nums = a.split('.')

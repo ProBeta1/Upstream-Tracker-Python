@@ -5,6 +5,7 @@ Created on Aug 2, 2012
 '''
 
 import urllib2
+import urllib
 from xml.dom.minidom import parse, parseString
  
 class WebParse(object):
@@ -50,6 +51,15 @@ class WebParse(object):
                 pkgName=record.getElementsByTagName('pkgName')[0].firstChild.data
                 processed=record.getElementsByTagName('processed')[0].firstChild.data
                 
+                branch=str(branch).strip()
+                error=str(error).strip()
+                errorMessage=str(errorMessage).strip()
+                id=str(id).strip()
+                url=str(url).strip()
+                method=str(method).strip()
+                pkgName=str(pkgName).strip()
+                processed=str(processed).strip()
+                
                 recordList.append({'branch':branch, 'error':error, 'errorMsg':errorMessage, 'id':id, 'url':url, 'method':method, 'pkgname':pkgName, 'processed':processed})
                 
             return recordList
@@ -60,7 +70,20 @@ class WebParse(object):
             value='N/A'
         
         opener = urllib2.build_opener(urllib2.HTTPHandler)
-        putData='record['+param+']='+value
+        valueString=''
+        if type(value) is list:
+            if len(value)==1:
+                valueString=value[0]
+            elif len(value)>1:
+                for val in value:
+                    valueString+=val+' ,'
+                valueString=valueString[:-1]
+            else:
+                valueString='-'
+        else:
+            valueString=value
+            
+        putData='record['+param+']='+valueString
         request = urllib2.Request(self.url+':'+self.port+'/records/'+id+'.xml', data=putData)
         request.get_method = lambda: 'PUT'
         url = opener.open(request)
