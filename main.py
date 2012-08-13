@@ -1,7 +1,7 @@
 import threading, Queue
 import sys
 from WebParse import WebParse
-from Upstream import Upstream, HTTPLS, FTPLS, Google, Launchpad, SVNLS, Trac,\
+from Upstream import HTTPLS, FTPLS, Google, Launchpad, SVNLS, Trac,\
     SubdirHTTPLS, DualHTTPLS, Custom, SF
 
 THREAD_LIMIT = 5             
@@ -49,6 +49,11 @@ class workerbee(threading.Thread):
         
         if method=='httpls':
             upstream=HTTPLS(url, pkgname, branch)
+            (ver,loc,error) = upstream.process()
+            print pkgname, ver, loc
+            
+        if method=='subdirhttpls':
+            upstream=SubdirHTTPLS(url, pkgname, branch)
             (ver,loc,error) = upstream.process()
             print pkgname, ver, loc
             

@@ -71,7 +71,7 @@ classdocs
             try:
                 files = ftp.nlst()
                 for file in files:
-                    links.append(scheme+'://'+hostname+'/'+file)
+                    links.append(scheme+'://'+hostname+path+'/'+file)
             except ftplib.error_perm, resp:
                 if str(resp) == "550 No files found":
                     print "No files in this directory"
@@ -85,14 +85,19 @@ classdocs
         error=None
         
         for link in links:
-            try:
-                match=re.match(regex, link.lower())
-                if match.group(0).find('/')>=0:
-                    newLinks.append(match.group(1).split('/')[-1])
-                else:
-                    newLinks.append(match.group(1))
-            except Exception, e:
-                pass
+            
+            while link.find('..')>=0:
+                link.replace('..','.')
+            
+            if link!='.':
+                try:
+                    match=re.match(regex, link, re.IGNORECASE)
+                    if match.group(0).find('/')>=0:
+                        newLinks.append(match.group(1).split('/')[-1])
+                    else:
+                        newLinks.append(match.group(1))
+                except Exception, e:
+                    pass
             
         if len(newLinks)==0:
             error='Unable to process links'
@@ -150,7 +155,7 @@ classdocs
         for link in links:
             if link.find(latestVer)>=0:
                 if link.find('.tar')>=0:
-                    return link, None
+                    return link, None                    
                 
         return None, 'Unable to find Location'
     
@@ -187,13 +192,12 @@ class SF(Upstream):
     
     def __init__(self, url, pkgname, branch):
         
-        self.url=url
+        self.url='http://sourceforge.net/api/file/index/project-name/'+url+'/rss'
         self.pkgname=pkgname
         self.branch=branch
         
     def process(self):
-        
-        doc = minidom.parseString(urllib2.urlopen('/'.join(self.url.split('/')[:-1])).read())
+        doc = minidom.parseString(urllib2.urlopen(self.url).read())
         items = doc.getElementsByTagName('item')
         
         links=[]
@@ -208,7 +212,7 @@ class SF(Upstream):
                     except Exception, e:
                         pass
         
-        (versions, error)=self.getVersions(links, '^.*'+self.pkgname+'[_-](([0-9]+[\.\-])*[0-9]+)\.(?:tar.*|t[bg]z2?).*$')
+        (versions, error)=self.getVersions(links, '^.*'+self.pkgname+'[_-](([0-9]+[\.\-])*[0-9]+).*\.(?:tar.*|t[bg]z2?).*$')
         if error:
             return None, None, error
         
@@ -222,11 +226,15 @@ class SF(Upstream):
         if error:
             return None, None, error
         
-        (location, error) = self.getLocation(links, latestVer[0])
-        if error:
-            return None, None, error
+        locs=[]
+        for ver in latestVer:
+            (location, error) = self.getLocation(links, ver)
+            if error:
+                return None, None, error
+            locs.append(location)
         
-        return latestVer, location, None
+        
+        return latestVer, locs, None
 
     
 class DualHTTPLS(Upstream):
@@ -345,7 +353,7 @@ class Launchpad(Upstream):
             (location, error) = self.getLocation(links, ver)
             if error:
                 return None, None, error
-            location=location.replace('http://launchpad.net/dee/+download','')
+            location=location.replace('http://launchpad.net/'+self.pkgname+'/+download','')
             locs.append(location)
         return latestVer, location, None
     
@@ -404,7 +412,11 @@ class SubdirHTTPLS(Upstream):
         
         self.url=url
         self.pkgname=pkgname
-        self.branch=branch
+        
+        if branch=='latest':
+            self.branch=''
+        else:
+            self.branch=branch
         
     def process(self):
         
@@ -413,15 +425,14 @@ class SubdirHTTPLS(Upstream):
         (links, error)=self.getPageLinks(self.url)
         if error:
             return None, None, error
-            
+        
         while True:
-            
             (versions, error)=self.getVersions(links, '^.*/([\d\.]+)/')
             if error:
                 return None, None, error
             (latestVer, error) = self.getLatestVersion(versions, self.branch)
             
-            self.url=self.url+latestVer+'/'
+            self.url=self.url+latestVer[0]+'/'
             
             (links, error)=self.getPageLinks(self.url)
             if error:
