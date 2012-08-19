@@ -3,11 +3,15 @@ import sys
 from WebParse import WebParse
 from Upstream import HTTPLS, FTPLS, Google, Launchpad, SVNLS, Trac,\
     SubdirHTTPLS, DualHTTPLS, Custom, SF
+import time
 
-THREAD_LIMIT = 5             
+THREAD_LIMIT = 2
 QUEUE_LIMIT = 50
 URL = 'http://localhost'
 PORT = '3000'
+THREAD_WAIT = 5 
+
+# On an average, no of records processed is : 1 for every THREAD_WAIT seconds
 
 jobs = Queue.Queue(QUEUE_LIMIT)          
 singlelock = threading.Lock()   
@@ -114,13 +118,14 @@ class workerbee(threading.Thread):
         wp.updateRecord('processed', 'true', id)
         wp.updateRecord('latest_ver', ver, id)
         wp.updateRecord('loc', loc, id)
-    
+
     def run(self):
         while 1:
             try:
                 job = jobs.get(True,1)
                 self.process(job[0],job[1],job[2],job[3], job[5])
-                jobs.task_done()
+		jobs.task_done()
+                time.sleep(THREAD_WAIT)
             except:
                 break
 
