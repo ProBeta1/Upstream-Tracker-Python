@@ -7,7 +7,7 @@ from Upstream import HTTPLS, FTPLS, Google, Launchpad, SVNLS, Trac,\
 THREAD_LIMIT = 5             
 QUEUE_LIMIT = 50
 URL = 'http://localhost'
-PORT = '3000'
+PORT = 3000
 
 jobs = Queue.Queue(QUEUE_LIMIT)          
 singlelock = threading.Lock()   
