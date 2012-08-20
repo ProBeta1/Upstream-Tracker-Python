@@ -87,5 +87,5 @@ class WebParse(object):
             
         putData='record['+param+']='+valueString
         request = urllib2.Request(self.url+':'+self.port+'/records/'+id+'.xml', data=putData)
-        request.get_method = lambda: 'PUT'
+        request.get_method = lambda: 'UPDATE'
         url = opener.open(request)

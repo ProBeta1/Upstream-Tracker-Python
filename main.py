@@ -4,13 +4,16 @@ from WebParse import WebParse
 from Upstream import HTTPLS, FTPLS, Google, Launchpad, SVNLS, Trac,\
     SubdirHTTPLS, DualHTTPLS, Custom, SF
 import time
-from optparse import OptionParser
+from datetime import datetime, timedelta
+from time import gmtime, strftime
 
 THREAD_LIMIT = 2
 QUEUE_LIMIT = 50
 URL = 'http://localhost'
 PORT = '3000'
 THREAD_WAIT = 5 
+
+HOURS_LIMIT=1
 
 # On an average, no of records processed is : 1 for every THREAD_WAIT seconds
 
@@ -33,8 +36,16 @@ for record in records:
 	id=record['id']
 	processed=record['processed']
 	branch=record['branch']
+	updated=record['updated-at']
 
-	inputlist_ori.append([pkgname, method, url, id, processed, branch])
+	date_object = datetime.strptime(updated, '%Y-%m-%dT%H:%M:%SZ')
+        curr_dt=datetime.strptime(strftime('%Y-%m-%dT%H:%M:%SZ', gmtime()), '%Y-%m-%dT%H:%M:%SZ')
+
+	if (processed=='true' and ((curr_dt-date_object)-timedelta(hours=HOURS_LIMIT)).seconds/3600<=0) or processed=='false':
+		print 'Processing ' + pkgname + ' ; Time difference : ' + str((timedelta(hours=HOURS_LIMIT)-(curr_dt-date_object)).seconds/3600)
+		inputlist_ori.append([pkgname, method, url, id, processed, branch])
+	else:
+		print 'Not processing ' + pkgname + ' ; Time difference : ' + str((curr_dt-date_object).seconds/3600) +'H '+str(((curr_dt-date_object).seconds-3600)/60) +'M'
 
 def main(inputlist):
     for x in xrange(THREAD_LIMIT):
@@ -119,6 +130,7 @@ class workerbee(threading.Thread):
         wp.updateRecord('processed', 'true', id)
         wp.updateRecord('latest_ver', ver, id)
         wp.updateRecord('loc', loc, id)
+
 
     def run(self):
         while 1:
