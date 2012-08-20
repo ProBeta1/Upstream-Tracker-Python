@@ -17,11 +17,11 @@ __Changing essential parameters__
 
 Many parameters used in the code can be varied. These would ideally be given as input using the command line arguments, however, currently, these are defined inside main.py. Hence, it is necessary to modify these parameters before running the code. Some of the parameters that should/can be modified are :
 
-THREAD_LIMIT : Sets the maximum number of threads that run simultaneously.
-QUEUE_LIMIT : Sets the maximum number of jobs/tasks that are in the queue waiting to be processed at any given point of time. 
-URL : This is the URL of the Rails web frontend. If it is running locally, this is usually http://localhost.
-PORT : Port on which the Rails server is listening. This is by default 3000.
-HOURS_LIMIT : Defines the number of hours after the last processing of a record, before which it is not taken up for processing again. Reecords not processed so far do not obey this.
+* THREAD_LIMIT : Sets the maximum number of threads that run simultaneously.
+* QUEUE_LIMIT : Sets the maximum number of jobs/tasks that are in the queue waiting to be processed at any given point of time. 
+* URL : This is the URL of the Rails web frontend. If it is running locally, this is usually http://localhost.
+* PORT : Port on which the Rails server is listening. This is by default 3000.
+* HOURS_LIMIT : Defines the number of hours after the last processing of a record, before which it is not taken up for processing again. Reecords not processed so far do not obey this.
 
 __What's missing?__
 
