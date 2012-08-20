@@ -22,21 +22,20 @@ inputlist_ori = []
 wp = WebParse(URL, PORT)
 records=wp.getRecords()
 
-def init():
-    
-	if records==None:
-	    print 'No records found!'
-	    sys.exit(1)
-    
-	for record in records:
-		pkgname=record['pkgname']
-		method=record['method']
-		url=record['url']
-		id=record['id']
-		processed=record['processed']
-		branch=record['branch']
-    
-    	inputlist_ori.append([pkgname, method, url, id, processed, branch])
+if records==None:
+    print 'No records found!'
+    sys.exit(1)
+
+for record in records:
+	pkgname=record['pkgname']
+	print pkgname
+	method=record['method']
+	url=record['url']
+	id=record['id']
+	processed=record['processed']
+	branch=record['branch']
+
+inputlist_ori.append([pkgname, method, url, id, processed, branch])
 
 def main(inputlist):
     for x in xrange(THREAD_LIMIT):
@@ -128,38 +127,8 @@ class workerbee(threading.Thread):
                 job = jobs.get(True,1)
                 self.process(job[0],job[1],job[2],job[3], job[5])
 		jobs.task_done()
-                time.sleep(THREAD_WAIT)
             except:
-		jobs.task_done()
-                break
+	       break
 
 if __name__ == '__main__':
-
-	global URL
-	global PORT
-	global THREAD_LIMIT
-
-	parser = OptionParser()
-
-	parser.add_option("-u", "--url", dest="url",
-                  help="URL of the Rails Web Interface (http://localhost if running locally)", metavar="URL")
-	parser.add_option("-p", "--port", dest="port",
-                  help="Port on which the Rails server is listening", metavar="PORT")
-	parser.add_option("-t", "--threads", dest="threads",
-                  help="Number of simultaneous threads to process", metavar="THREADS")
-
-	(options, args) = parser.parse_args()
-
-	if options.url:
-		URL=options.url
-
-	if options.port:
-		PORT=options.port
-
-	if options.threads:
-		THREAD_LIMIT=options.threads
-
-	print URL, PORT, THREAD_LIMIT
-
-	init()
 	main(inputlist_ori)
