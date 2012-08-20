@@ -4,6 +4,7 @@ from WebParse import WebParse
 from Upstream import HTTPLS, FTPLS, Google, Launchpad, SVNLS, Trac,\
     SubdirHTTPLS, DualHTTPLS, Custom, SF
 import time
+from optparse import OptionParser
 
 THREAD_LIMIT = 2
 QUEUE_LIMIT = 50
@@ -11,30 +12,32 @@ URL = 'http://localhost'
 PORT = '3000'
 THREAD_WAIT = 5 
 
-# On an average, no of records processed is : 2 for every 10 seconds
+# On an average, no of records processed is : 1 for every THREAD_WAIT seconds
 
 jobs = Queue.Queue(QUEUE_LIMIT)          
 singlelock = threading.Lock()   
- 
+
 inputlist_ori = []
 
 wp = WebParse(URL, PORT)
 records=wp.getRecords()
+
+def init():
     
-if records==None:
-    print 'No records found!'
-    sys.exit(1)
+	if records==None:
+	    print 'No records found!'
+	    sys.exit(1)
     
-for record in records:
-    pkgname=record['pkgname']
-    method=record['method']
-    url=record['url']
-    id=record['id']
-    processed=record['processed']
-    branch=record['branch']
+	for record in records:
+		pkgname=record['pkgname']
+		method=record['method']
+		url=record['url']
+		id=record['id']
+		processed=record['processed']
+		branch=record['branch']
     
-    inputlist_ori.append([pkgname, method, url, id, processed, branch])
-    
+    	inputlist_ori.append([pkgname, method, url, id, processed, branch])
+
 def main(inputlist):
     for x in xrange(THREAD_LIMIT):
         workerbee().start()
@@ -127,7 +130,36 @@ class workerbee(threading.Thread):
 		jobs.task_done()
                 time.sleep(THREAD_WAIT)
             except:
+		jobs.task_done()
                 break
 
 if __name__ == '__main__':
-    main(inputlist_ori)
+
+	global URL
+	global PORT
+	global THREAD_LIMIT
+
+	parser = OptionParser()
+
+	parser.add_option("-u", "--url", dest="url",
+                  help="URL of the Rails Web Interface (http://localhost if running locally)", metavar="URL")
+	parser.add_option("-p", "--port", dest="port",
+                  help="Port on which the Rails server is listening", metavar="PORT")
+	parser.add_option("-t", "--threads", dest="threads",
+                  help="Number of simultaneous threads to process", metavar="THREADS")
+
+	(options, args) = parser.parse_args()
+
+	if options.url:
+		URL=options.url
+
+	if options.port:
+		PORT=options.port
+
+	if options.threads:
+		THREAD_LIMIT=options.threads
+
+	print URL, PORT, THREAD_LIMIT
+
+	init()
+	main(inputlist_ori)
